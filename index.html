@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>De Doodgewone Quiz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    /* Jersey 10 (SIL Open Font License), bundled so the game works offline */
+    @font-face { font-family: 'Jersey 10'; src: url('fonts/Jersey10-Regular.ttf') format('truetype'); }
+
+    :root { --ink: #1a1420; --night: #14121f; --panel: #1e293b; --gold: #ffd23f; --orange: #f97316; }
+    html { font-size: 21px; }   /* the pixel font is narrow, so everything is set a size up */
+
+    /* Three looks. Until developer mode is unlocked the page is as dull as the quiz;
+       after that it is the inside of the machine. */
+    body {
+      font-family: 'Jersey 10', 'Segoe UI', Tahoma, sans-serif; font-synthesis: none;
+      background: #c5cdd6; color: #f1f5f9;
+      min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+    }
+    body.dev, body.end {
+      background: var(--night);
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    img { image-rendering: pixelated; -webkit-user-drag: none; }
+    button, input, select { font-family: inherit; }
+
+    /* ── PIXEL FRAMES ──
+       A hard-edged frame with notched corners: four offset shadows draw the outline,
+       two inset ones the bevel. --px is the size of one "pixel". */
+    .hud-btn, .btn, .panel, .box, #bubble, #toast, .tile {
+      --px: 4px; --edge: var(--ink); --hi: rgba(255,255,255,.2); --lo: rgba(0,0,0,.32);
+      border: 0; border-radius: 0;
+      box-shadow:
+        0 calc(var(--px) * -1) 0 0 var(--edge), 0 var(--px) 0 0 var(--edge),
+        calc(var(--px) * -1) 0 0 0 var(--edge), var(--px) 0 0 0 var(--edge),
+        inset var(--px) var(--px) 0 0 var(--hi),
+        inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 var(--lo);
+    }
+    .hud-btn:hover, .btn:hover, button.tile:hover { filter: brightness(1.12); }
+    .hud-btn:active, .btn:active { --hi: rgba(0,0,0,.3); --lo: rgba(255,255,255,.14); transform: translateY(2px); }
+
+    .btn {
+      cursor: pointer; font-size: 1.15rem; padding: 12px 24px;
+      background: var(--orange); color: #fff; text-shadow: 2px 2px 0 #9a3412;
+    }
+    .btn.ghost { background: #26324a; color: #e2e8f0; text-shadow: none; font-size: 1rem; padding: 10px 16px; }
+    .btn-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── HUD ── */
+    #hud { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px 10px; }
+    /* until developer mode is unlocked only the language switch is up here, as dull as the quiz */
+    body:not(.dev):not(.end) #hud { justify-content: flex-end; }
+    body:not(.dev):not(.end) .hud-title, body:not(.dev):not(.end) .hud-btn:not(#hud-lang) { display: none; }
+    body:not(.dev):not(.end) #hud-lang {
+      box-shadow: none; padding: 6px 12px; font: 13px Arial, Helvetica, sans-serif;
+      color: #2c5687; background: #f4f2ec; border: 1px solid #8a94a0; border-radius: 3px;
+    }
+    #hud-lang .short { display: none; }   /* "EN" instead of "English", where the bar is short of room */
+    .hud-title { font-size: 1.7rem; color: var(--gold); text-shadow: 3px 3px 0 #7a4b00; letter-spacing: .04em; }
+    .hud-btns { display: flex; gap: 14px; }
+    .hud-btn {
+      cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+      background: var(--panel); color: #f1f5f9; padding: 6px 13px; font-size: 1.05rem;
+    }
+    .hud-btn img { height: 22px; }
+    .hud-btn.off { color: #64748b; text-decoration: line-through; }
+    .hud-btn.bump { animation: bump .5s steps(5); }
+    @keyframes bump { 40% { transform: scale(1.35); } }
+
+    /* ── LAYOUT ── */
+    #main {
+      flex: 1; width: 100%; max-width: 600px; margin: 0 auto; padding: 18px;
+      display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: center;
+    }
+    /* pinned to the top, so that nothing shifts when a question grows or shrinks */
+    body.dev #main { max-width: 1180px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; align-content: start; padding-top: 10px; }
+    @media (max-width: 860px) { body.dev #main { grid-template-columns: minmax(0, 1fr); } }
+
+    /* ── THE QUIZ ── deliberately the dullest thing on the page */
+    .app {
+      background: #f4f2ec; color: #23272e; font: 16px/1.4 Arial, Helvetica, sans-serif;
+      border: 1px solid #8a94a0; box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      display: flex; flex-direction: column; min-width: 0;
+    }
+    .app-bar { display: flex; justify-content: space-between; background: linear-gradient(#3f74ad, #2c5687); color: #fff; padding: 7px 12px; font-size: 13px; font-weight: bold; }
+    .app-bar span { font-weight: normal; letter-spacing: .3em; opacity: .8; }
+    .app-sub { display: flex; flex-wrap: wrap; gap: 4px 18px; background: #e4e1d8; border-bottom: 1px solid #c8c4b8; padding: 5px 12px; font-size: 12px; color: #5b6068; }
+    #app-q { margin-left: auto; }
+    .app-body { position: relative; flex: 1; min-height: 400px; padding: 24px 24px 76px; overflow: hidden; }
+    .app-body.spill { overflow: visible; }   /* for the progress bar that leaves the window */
+    .app-foot { border-top: 1px solid #dcd8cd; padding: 5px 12px; font-size: 11px; color: #9a968c; }
+
+    .start { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding-top: 44px; }
+    .start h1 { font-size: 30px; }
+    .start small { color: #8b8f96; }
+    .lang-link { font: 14px Arial, Helvetica, sans-serif; color: #2c5687; text-decoration: underline; background: none; border: 0; cursor: pointer; }
+    .q-text { font-size: 21px; font-weight: bold; line-height: 1.25; margin-bottom: 6px; }
+    .q-sub { color: #5b6068; margin-bottom: 12px; }
+    .ans {
+      display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+      padding: 11px 14px; margin-top: 9px; background: #fff; border: 1px solid #b4b4b4; border-radius: 3px;
+    }
+    .ans:hover:enabled { background: #f0f6fc; }
+    .ans.sel { background: #d9e8f7; border-color: #3f74ad; }
+    .ans:disabled { cursor: default; opacity: .65; }
+    .app-btn {
+      font: bold 15px Arial, Helvetica, sans-serif; color: #fff; cursor: pointer;
+      background: #3f74ad; border: 1px solid #2c5687; border-radius: 3px; padding: 10px 20px;
+    }
+    .app-btn.big { font-size: 18px; padding: 14px 30px; }
+    .app-btn:disabled { background: #a9b3bd; border-color: #98a2ac; cursor: not-allowed; }
+    .app-btn.down { transform: translateY(2px); filter: brightness(.85); }
+    .warn { margin-top: 10px; font-size: 13px; color: #a15c00; }
+    .wait, .idle { margin-top: 14px; color: #8a6d1a; font-style: italic; }
+    .idle { color: #9a968c; }
+    .banner { margin-top: 16px; padding: 12px; text-align: center; border-radius: 3px; font: bold 22px 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive; }
+    .banner.good { background: #dff3d8; color: #1f6b1f; border: 1px solid #9fcf93; }
+    .banner.bad { background: #f9dcdc; color: #9b1c1c; border: 1px solid #e0a0a0; }
+
+    /* question 1: the button that will not be caught */
+    #next { position: absolute; right: 24px; bottom: 20px; z-index: 3; transition: left .12s, top .12s, transform .25s, opacity .15s; }
+    #next.spin { animation: spin .6s linear; }
+    #next.gone { opacity: 0; pointer-events: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .app.glitch { animation: glitch .9s steps(9); }
+    @keyframes glitch {
+      0%, 100% { transform: none; filter: none; clip-path: none; }
+      11% { transform: translate(-6px, 3px) skewX(4deg); filter: hue-rotate(90deg) invert(1); }
+      22% { transform: translate(8px, -2px); clip-path: inset(10% 0 55% 0); }
+      33% { transform: translate(-3px, 6px) skewX(-6deg); filter: invert(1); }
+      44% { transform: translate(5px, 0); clip-path: inset(60% 0 5% 0); }
+      55% { transform: translate(-9px, -4px); filter: hue-rotate(200deg); }
+      66% { transform: translate(4px, 4px) skewX(8deg); clip-path: inset(30% 0 30% 0); }
+      77% { transform: translate(-2px, -6px); filter: invert(1) hue-rotate(40deg); }
+      88% { transform: translate(6px, 2px); }
+    }
+
+    /* question 3: a hundred clicks */
+    .clicker { display: flex; align-items: center; gap: 22px; margin: 18px 0; }
+    .count { font-size: 22px; color: #5b6068; }
+    .count b { color: #23272e; font-size: 30px; }
+    .meter { position: relative; z-index: 5; height: 20px; background: #fff; border: 1px solid #a8a8a8; }
+    .meter i { display: block; height: 100%; width: 0; background: #3f74ad; }
+    .spill .meter i { background: #d9342b; }
+
+    /* question 4: the scrambled one */
+    .tiles { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .tiles .word { display: flex; gap: 2px; }
+    .tiles i {
+      display: grid; place-items: center; width: 22px; height: 30px; background: #fff; border: 1px solid #c2c2c2;
+      font: bold 18px ui-monospace, Menlo, Consolas, monospace;
+    }
+    .tiles i.now { background: #ffe58a; border-color: #c79a00; }
+    .tiles i.done { background: #e2f3dc; border-color: #9fcf93; }
+    #cy-q { margin-bottom: 14px; }
+    .ans.tiles { padding: 8px 10px; }
+    .hand { display: flex; gap: 12px; margin: 4px 0 8px; }
+    .hand label { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .hand b { font: bold 22px ui-monospace, Menlo, Consolas, monospace; }
+    .hand span { color: #9a968c; font-size: 12px; }
+    .hand input {
+      width: 44px; height: 46px; text-align: center; text-transform: uppercase;
+      font: bold 22px ui-monospace, Menlo, Consolas, monospace; border: 2px solid #3f74ad; border-radius: 3px;
+    }
+    .hand input.ok { background: #e2f3dc; border-color: #5aa64a; color: #1f6b1f; }
+    .hand input.no { animation: shake .3s; }
+    @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+    /* ── BUGS ── the pixel creature that sits on whatever is broken */
+    .perch { position: relative; }
+    span.perch { display: inline-block; }
+    .bug { position: absolute; top: -18px; right: -12px; width: 26px; pointer-events: none; animation: wiggle .5s steps(2) infinite; }
+    .bug.corner { top: 10px; right: 12px; width: 30px; }
+    @keyframes wiggle { 50% { transform: translateY(-3px) rotate(8deg); } }
+    .crawler { position: absolute; bottom: 8px; width: 26px; animation: crawl 14s linear infinite, wiggle .4s steps(2) infinite; }
+    @keyframes crawl { from { left: -30px; } to { left: 100%; } }
+    .flying { position: fixed; z-index: 80; pointer-events: none; transition: left .7s cubic-bezier(.5, -.4, .7, 1), top .7s ease-in, transform .7s; }
+
+    /* ── THE CODE ── */
+    .code-pane {
+      display: none; flex-direction: column; min-width: 0;
+      background: #12141c; color: #d6deeb; font: 15px/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      border: 1px solid #2a2f3f; box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+    body.dev .code-pane { display: flex; animation: slide .5s steps(8); }
+    @keyframes slide { 0% { transform: translateX(40px); opacity: 0; } }
+    .code-tab { display: flex; justify-content: space-between; gap: 12px; background: #0b0c12; color: #7f8aa3; padding: 7px 14px; font-size: 12px; }
+    .code-tab b { color: #d6deeb; font-weight: normal; }
+    ol.code { list-style: none; counter-reset: line; padding: 14px 0 6px; }
+    ol.code li {
+      counter-increment: line; display: flex; align-items: center; gap: 8px;
+      min-height: 38px; padding: 3px 12px 3px 0; border-left: 4px solid transparent;
+    }
+    ol.code li::before { content: counter(line); flex: none; width: 30px; margin-right: 8px; text-align: right; color: #4a5268; }
+    ol.code .src { flex: 1; min-width: 0; }
+    ol.code li.run { animation: ran .8s ease-out; }      /* this line just ran */
+    @keyframes ran { 0%, 35% { background: rgba(255,214,10,.22); border-left-color: #ffd60a; } }
+    ol.code li.hot { background: rgba(255,214,10,.22); border-left-color: #ffd60a; }   /* running too fast to follow */
+    ol.code li.fresh { animation: fresh 1s steps(4) 3; }
+    @keyframes fresh { 50% { background: rgba(130,170,255,.3); } }
+    .kw { color: #c792ea; font-weight: normal; }
+    .str { color: #c3e88d; }
+    .var { color: #f78c6c; }
+    .note { color: #5c6680; font-style: italic; }
+    .thing { color: #82aaff; border: 1px solid rgba(130,170,255,.5); border-radius: 3px; padding: 0 5px; }
+    /* a dashed yellow box is something the player can change */
+    .slot {
+      font: inherit; color: #ffd60a; background: #232838; outline: none;
+      border: 2px dashed #ffd60a; border-radius: 4px; padding: 2px 6px; margin: 0 2px;
+    }
+    .slot:focus { border-style: solid; background: #2d3348; }
+    .slot::placeholder { color: #8a7a2e; }
+    select.slot { cursor: pointer; }
+    input.slot.num { text-align: center; }
+    .mv { display: flex; gap: 4px; }
+    .mv button { width: 32px; height: 30px; font: 12px monospace; color: #d6deeb; background: #262c3d; border: 1px solid #3a4258; border-radius: 3px; cursor: pointer; }
+    .mv button:hover { background: #343c54; }
+    .code-foot { padding: 6px 14px 16px 54px; min-height: 22px; }
+    #run {
+      font: bold 15px ui-monospace, Menlo, Consolas, monospace; color: #0b2a12; cursor: pointer;
+      background: #4ade80; border: 0; border-radius: 3px; padding: 9px 22px; box-shadow: 0 3px 0 #15803d;
+    }
+    #run:active { transform: translateY(2px); box-shadow: 0 1px 0 #15803d; }
+    #run:disabled { background: #46516a; color: #8a94ab; box-shadow: none; cursor: default; }
+    .code-pane.locked ol.code { pointer-events: none; }
+
+    /* ── THE DUCK ── */
+    #duckbar {
+      display: none; position: sticky; bottom: 0; z-index: 20; align-items: flex-end; gap: 16px;
+      width: 100%; max-width: 1180px; margin: 0 auto; padding: 18px 20px 18px;
+      background: linear-gradient(rgba(20,18,31,0), var(--night) 40%);
+    }
+    body.dev #duckbar { display: flex; }
+    #duck { flex: none; background: none; border: 0; padding: 0; cursor: pointer; }
+    #duck img { display: block; width: 84px; }
+    #duck.squeak img { animation: squeak .25s steps(3); }
+    @keyframes squeak { 50% { transform: scale(1.2, .7) translateY(14px); } }
+    #bubble { flex: 1; min-height: 62px; margin-bottom: 6px; padding: 11px 16px; background: #fffbe6; color: var(--ink); font-size: 1.1rem; line-height: 1.12; }
+    #bubble.pop { animation: pop .25s steps(4); }
+    @keyframes pop { 0% { transform: translateY(6px) scale(.97); } }
+    #hint { flex: none; margin-bottom: 6px; white-space: nowrap; }
+    #hint.nudge { animation: nudge 1s steps(4) infinite; }
+    @keyframes nudge { 50% { transform: translateY(-5px); filter: brightness(1.5); } }
+
+    /* ── OVERLAYS ── */
+    .overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(8,6,18,.88); }
+    .overlay.open { display: flex; }
+    .panel {
+      width: 100%; max-width: 520px; max-height: calc(100vh - 48px); overflow: auto; padding: 26px;
+      background: var(--panel); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+      animation: pop .25s steps(4);
+    }
+    .panel p { font-size: 1.15rem; line-height: 1.15; }
+    .panel.wide { max-width: 760px; }
+    .say-duck { width: 112px; }
+    .say-name, .tag { color: var(--gold); font-size: 1rem; letter-spacing: .1em; text-transform: uppercase; }
+    .title { font-size: 2.1rem; line-height: 1; color: #fff; text-shadow: 3px 3px 0 var(--ink); }
+    .idea { font-size: 1.15rem; color: #cbd5e1; }
+    .idea b { font-weight: normal; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; }
+    #caught-img { width: 120px; animation: wiggle .5s steps(2) infinite; }
+    #unlock-code {
+      width: 230px; padding: 6px; text-align: center; text-transform: uppercase; letter-spacing: .25em;
+      font-size: 2.6rem; color: var(--ink); background: #fffbe6; border: 4px solid var(--ink); outline: none;
+    }
+    .err { min-height: 1.2em; color: #fca5a5; }
+    .overlay .keycard { font-size: 9px; }
+
+    .jar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; width: 100%; padding: 4px; }
+    #jar-main { grid-template-columns: repeat(3, 1fr); }   /* six bugs: two full rows */
+    .tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; background: #26324a; color: #f1f5f9; font-size: 1rem; cursor: pointer; }
+    .tile img { width: 60px; margin-bottom: 4px; }
+    .tile i { font-style: normal; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; font-size: .9rem; }
+    .tile.empty { cursor: default; color: #64748b; background: #1a2336; }
+    .tile.empty div { font-size: 2.8rem; line-height: 64px; }
+
+    #boot { background: #000; align-items: flex-start; justify-content: flex-start; padding: 40px; }
+    #boot pre { color: #4ade80; font: 16px/1.7 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+
+    /* the developer comes back: a chat window as dull as the quiz */
+    .chat { width: 100%; max-width: 560px; background: #f4f2ec; color: #23272e; font: 15px/1.4 Arial, Helvetica, sans-serif; border: 1px solid #8a94a0; }
+    #chat-log { height: 300px; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 9px; cursor: pointer; }
+    #chat-log b { margin-right: 6px; color: #2c5687; }
+    #chat-log b.duck { color: #b77900; }
+    #chat-log .sys { color: #9a968c; font-style: italic; text-align: center; }
+    .chat-foot { padding: 10px 14px; border-top: 1px solid #dcd8cd; text-align: right; min-height: 60px; }
+
+    #flash {
+      position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; pointer-events: none;
+      padding: 20px; text-align: center; background: rgba(8,6,18,.75);
+      font-size: 3.4rem; line-height: 1; color: var(--gold); text-shadow: 5px 5px 0 #7a4b00; text-transform: uppercase;
+    }
+    #flash.on { display: flex; animation: flash 1.8s steps(12) forwards; }
+    @keyframes flash { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+    #toast {
+      position: fixed; top: 76px; left: 50%; z-index: 75; display: flex; align-items: center; gap: 14px;
+      width: max-content; max-width: calc(100vw - 40px); padding: 10px 18px; background: #3b2a6b; color: #fff;
+      transform: translate(-50%, -30px); opacity: 0; pointer-events: none; transition: transform .25s steps(4), opacity .25s steps(4);
+    }
+    #toast.on { transform: translate(-50%, 0); opacity: 1; }
+    #toast img { width: 44px; }
+    #toast b { display: block; font-weight: normal; color: var(--gold); font-size: 1.15rem; }
+
+    #staff { position: fixed; left: 50%; top: 0; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 6px; padding: 6px; background: #000; color: #fff; font: 12px Arial, sans-serif; }
+    #staff button { font: inherit; padding: 3px 8px; }
+
+    /* ── THE LAST SCREEN ── */
+    #end { display: none; flex-direction: column; gap: 26px; width: 100%; max-width: 780px; margin: 0 auto; padding: 14px 22px 48px; }
+    body.end #end { display: flex; }
+    body.end #main, body.end #duckbar { display: none; }
+    .box { background: var(--panel); padding: 22px; }
+    .box h3 { margin-bottom: 12px; font-size: 1.4rem; font-weight: normal; color: var(--gold); }
+    .box p { font-size: 1.1rem; line-height: 1.15; color: #dbe3ee; }
+    .lic-head { display: flex; align-items: center; gap: 22px; }
+    .lic-head img { width: 110px; flex: none; }
+    .lic-name { font-size: 3rem; line-height: 1; color: #fff; text-shadow: 4px 4px 0 var(--ink); word-break: break-word; }
+    .lic-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px 20px; }
+    .lic-list div { display: flex; align-items: center; gap: 12px; font-size: 1.05rem; line-height: 1.05; color: #cbd5e1; }
+    .lic-list img { width: 40px; flex: none; }
+    .lic-list b { display: block; font-weight: normal; font-size: 1.25rem; color: var(--gold); text-transform: uppercase; letter-spacing: .05em; }
+    .lic-list .lost { opacity: .4; }
+    .own { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .own img { width: 130px; }
+    .own pre { font: bold 26px/1.15 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .3em; color: var(--gold); }
+    .own p { flex: 1; min-width: 220px; }
+    pre.real { margin-bottom: 12px; padding: 14px; overflow: auto; background: #12141c; color: #d6deeb; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+    .cta { font-size: 1.3rem; line-height: 1.15; text-align: center; color: #fff; }
+    .cta b { display: block; font-weight: normal; color: var(--gold); }
+
+    /* One column: the quiz above its code. The duck moves to the top and stays in view there,
+       because at the bottom it would sit on the code. */
+    @media (max-width: 860px) {
+      #hud { order: -2; }
+      #duckbar {
+        order: -1; top: 0; bottom: auto; padding: 8px 14px 10px; background: var(--night);
+        grid-template: "duck bubble" auto "hint bubble" 1fr / auto 1fr; gap: 4px 14px; align-items: start;
+      }
+      body.dev #duckbar { display: grid; }
+      #duck { grid-area: duck; justify-self: center; }
+      #duck img { width: 56px; }
+      #bubble { grid-area: bubble; margin: 4px 4px 4px 0; font-size: 1rem; }
+      #hint { grid-area: hint; margin: 0 0 4px 4px; padding: 6px 8px; font-size: .85rem; }
+      #toast { top: 12px; }
+    }
+
+    @media (max-width: 560px) {
+      html { font-size: 18px; }
+      .hud-title { display: none; }
+      .hud-btns { width: 100%; justify-content: space-between; gap: 8px; }
+      .hud-btn { padding: 6px 9px; font-size: 1rem; }
+      body:not(.dev):not(.end) .hud-btns { justify-content: flex-end; }
+      body.dev #hud-lang .long, body.end #hud-lang .long { display: none; }
+      body.dev #hud-lang .short, body.end #hud-lang .short { display: inline; }
+      .app-body { min-height: 340px; padding: 18px 16px 70px; }
+      .code-pane { font-size: 13px; }
+      .lic-head img { width: 70px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HUD: appears once developer mode is unlocked; until then it only shows the language switch -->
+<div id="hud">
+  <div class="hud-title" data-t="hud.title"></div>
+  <div class="hud-btns">
+    <button class="hud-btn" id="hud-lang"></button>
+    <button class="hud-btn" id="hud-card" data-t="hud.card" data-tip="hud.cardTip"></button>
+    <button class="hud-btn" id="hud-sound" data-t="hud.sound" data-tip="hud.soundTip"></button>
+    <button class="hud-btn" id="hud-jar" data-tip="hud.jarTip"><img id="hud-jar-img" alt=""><span id="hud-num"></span></button>
+    <button class="hud-btn" id="hud-power" data-tip="hud.power"><img id="hud-power-img" alt=""></button>
+  </div>
+</div>
+
+<main id="main">
+  <!-- what the player of the quiz sees -->
+  <section class="app" id="app">
+    <div class="app-bar">QuizMaster 3000 <span>– □ ×</span></div>
+    <div class="app-sub">
+      <div><span data-t="app.player"></span> <b class="pname"></b></div>
+      <div><span data-t="app.score"></span> <b class="pscore"></b></div>
+      <div id="app-q"></div>
+    </div>
+    <div class="app-body" id="app-body"></div>
+    <div class="app-foot" data-t="app.foot"></div>
+  </section>
+
+  <!-- what the developer of the quiz sees -->
+  <section class="code-pane" id="code-pane">
+    <div class="code-tab"><b id="code-title"></b><span data-t="code.behind"></span></div>
+    <ol class="code" id="code"></ol>
+    <div class="code-foot"><button id="run" data-t="code.run"></button></div>
+  </section>
+</main>
+
+<div id="duckbar">
+  <button id="duck" data-tip="duck.tip"><img alt=""></button>
+  <div id="bubble"></div>
+  <button class="btn ghost" id="hint"></button>
+</div>
+
+<section id="end"></section>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="say">
+  <div class="panel">
+    <img class="say-duck" alt="">
+    <div class="say-name" data-t="duck.name"></div>
+    <p id="say-text"></p>
+    <div class="btn-row">
+      <button class="btn" id="say-ok"></button>
+      <button class="btn ghost" id="say-alt"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="unlock">
+  <div class="panel">
+    <img class="say-duck" alt="">
+    <div class="say-name" data-t="duck.name"></div>
+    <p data-t="unlock.ask"></p>
+    <input id="unlock-code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <div class="err" id="unlock-err"></div>
+    <div class="btn-row">
+      <button class="btn" id="unlock-ok" data-t="unlock.ok"></button>
+      <button class="btn ghost" id="unlock-none" data-t="unlock.none"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="cardview">
+  <div class="panel">
+    <p id="cardview-text"></p>
+    <div id="cardview-card"></div>
+    <button class="btn" id="cardview-ok" data-t="unlock.got"></button>
+  </div>
+</div>
+
+<div class="overlay" id="caught">
+  <div class="panel">
+    <div class="tag" id="caught-tag"></div>
+    <img id="caught-img" alt="">
+    <div class="title" id="caught-name"></div>
+    <div class="idea" id="caught-idea"></div>
+    <p id="caught-text"></p>
+    <div class="btn-row">
+      <button class="btn" id="caught-ok"></button>
+      <button class="btn ghost" id="caught-again" data-t="caught.again"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="jar">
+  <div class="panel wide">
+    <div class="title" data-t="jar.title"></div>
+    <div class="jar-grid" id="jar-main"></div>
+    <div class="tag" id="jar-secret-title"></div>
+    <div class="jar-grid" id="jar-secrets"></div>
+    <div class="btn-row">
+      <button class="btn" id="jar-close" data-t="jar.close"></button>
+      <button class="btn ghost" id="jar-reset" data-t="jar.reset"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="chat">
+  <div class="chat">
+    <div class="app-bar"><b data-t="chat.title"></b><span>– □ ×</span></div>
+    <div id="chat-log"></div>
+    <div class="chat-foot"><button class="app-btn" id="chat-ok" data-t="chat.ok"></button></div>
+  </div>
+</div>
+
+<div class="overlay" id="idle">
+  <div class="panel">
+    <img class="say-duck" alt="">
+    <div class="title" data-t="idle.title"></div>
+    <p id="idle-text"></p>
+    <button class="btn" id="idle-ok" data-t="idle.ok"></button>
+  </div>
+</div>
+
+<div class="overlay" id="boot"><pre id="boot-text"></pre></div>
+
+<div id="flash"></div>
+<div id="toast"></div>
+<div id="staff" hidden></div>
+
+<script src="settings.js"></script>
+<script src="text.js"></script>
+<script src="card.js"></script>
+<script>
+// ══════════════════════════════════════════════
+// THE BUGS
+// ══════════════════════════════════════════════
+
+// The six bugs of the quiz, in the order the player meets them. What each one is called, and
+// the card that explains it, is in text.js under the same id.
+const BUGS = [
+  { id: 'runaway',   color: '#ef4444' },
+  { id: 'undefined', color: '#8b5cf6' },
+  { id: 'scrambler', color: '#f97316' },
+  { id: 'yesbug',    color: '#22c55e' },
+  { id: 'clicker',   color: '#06b6d4' },
+  { id: 'cipher',    color: '#ec4899' },
+];
+
+// Secret bugs: nobody has to catch them, and they are found by doing something the quiz
+// never asked for. Each rumor on the printed cards points at one of these, in this order.
+const SECRETS = [
+  { id: 'duck',      color: '#eab308' },
+  { id: 'cheater',   color: '#84cc16' },
+  { id: 'reboot',    color: '#94a3b8' },
+  { id: 'offbyone',  color: '#f43f5e' },
+  { id: 'overflow',  color: '#d9342b' },
+  { id: 'inspector', color: '#38bdf8' },
+  { id: 'hardway',   color: '#a78bfa' },
+];
+[...BUGS, ...SECRETS].forEach((b, i) => b.n = Card.RESERVED[i]);   // the creature's shape, see Card.grid
+const BUG = Object.fromEntries([...BUGS, ...SECRETS].map(b => [b.id, b]));
+const sprite = id => Card.bug(BUG[id].n, BUG[id].color);
+
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const LS_KEY = 'bughunt_v1';
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { /* a private window: play without saving */ }
+const S = Object.assign({
+  stage: 'start', card: null, borrowed: false,   // card: its number (see card.js); borrowed: the player has no paper one
+  name: '', score: 0, caught: [], secrets: [],
+  began: 0, ended: 0, sawEnd: false, sound: SETTINGS.sound,
+  lang: '',   // the language this player switched to, if any
+}, saved);
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
+function startOver() {
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  location.reload();
+}
+
+// Every change of stage raises `live`. Anything a stage has planned for later checks it
+// first, so that a timer from the previous stage can never act on the next one.
+let live = 0;
+const after = (ms, fn) => { const t = live; setTimeout(() => t === live && fn(), ms); };
+const pause = ms => { const t = live; return new Promise(done => setTimeout(() => done(t === live), ms)); };
+
+
+// ══════════════════════════════════════════════
+// LANGUAGE
+// ══════════════════════════════════════════════
+
+// Every word the player reads is in text.js, and `L` holds the words of the language in use:
+// the one this player switched to, else the one in the address (index.html?lang=en), else
+// the one in settings.js. Starting over for the next player goes back to that.
+useLanguage(S.lang || new URLSearchParams(location.search).get('lang') || SETTINGS.language);
+
+// The fixed parts of the page say which text they want: data-t="hud.card" shows L.hud.card,
+// and data-tip does the same for the little label that appears when the pointer rests on it.
+function labels() {
+  const word = path => path.split('.').reduce((at, key) => at[key], L);
+  document.title = L.title;
+  $$('[data-t]').forEach(el => el.textContent = word(el.dataset.t));
+  $$('[data-tip]').forEach(el => el.title = word(el.dataset.tip));
+  const next = nextLanguage();   // the switch is labeled with where it leads
+  $('#hud-lang').innerHTML = `<span class="long">${TEXT[next].name}</span><span class="short">${next.toUpperCase()}</span>`;
+  $('#hud-lang').title = TEXT[next].name;
+  if ($('#staff-new')) $('#staff-new').textContent = L.staff;
+}
+
+// The stage the player is in starts again in the other language. Nothing that was won is lost.
+function switchLanguage() {
+  S.lang = useLanguage(nextLanguage());
+  save(); labels();
+  go(S.stage);
+}
+
+// A line of code as text.js writes it, with its colors: "text", **keyword**, [a thing on the
+// screen] and $variable. {name} is a yellow box, which `boxes` supplies.
+function fmt(line, boxes = {}) {
+  if (line.startsWith('//')) return `<span class="note">${line}</span>`;
+  return line
+    .replace(/"(.*?)"/g, (all, text) => str(text))   // first: the html of the others has quotes of its own
+    .replace(/\*\*(.+?)\*\*/g, (all, word) => kw(word))
+    .replace(/\[(.+?)\]/g, (all, name) => thing(name))
+    .replace(/\$(\w+)/g, (all, name) => v(name))
+    .replace(/\{(\w+)\}/g, (all, name) => boxes[name]);
+}
+
+
+// ══════════════════════════════════════════════
+// SOUND
+// ══════════════════════════════════════════════
+
+const AC = window.AudioContext || window.webkitAudioContext;
+let ac = null;
+function beep(freq, dur = .12, type = 'square', vol = .05, when = 0, slideTo = 0) {
+  if (!S.sound || !AC) return;
+  ac = ac || new AC();
+  const t = ac.currentTime + when, osc = ac.createOscillator(), gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(t); osc.stop(t + dur);
+}
+const tune = (notes, step = .09, type = 'square') => notes.forEach((f, i) => beep(f, step * 1.7, type, .05, i * step));
+const SFX = {
+  tick:   () => beep(880, .04),
+  talk:   () => beep(520, .05, 'triangle', .09),
+  dodge:  () => beep(300, .12, 'square', .04, 0, 900),
+  good:   () => tune([523, 659, 784, 1047]),
+  bad:    () => tune([196, 147], .13, 'sawtooth'),
+  caught: () => tune([392, 523, 659, 784, 1047, 1319], .08),
+  secret: () => tune([1319, 988, 1319, 1568, 1976], .07, 'triangle'),
+  unlock: () => tune([262, 330, 392, 523, 659, 784, 1047], .06),
+  glitch: () => [0, .08, .17, .3, .42, .6].forEach(t => beep(80 + Math.random() * 900, .08, 'sawtooth', .05, t)),
+  whoosh: () => beep(200, .5, 'triangle', .07, 0, 1400),
+  quack:  () => { beep(640, .09, 'sawtooth', .05, 0, 380); beep(560, .13, 'sawtooth', .05, .11, 300); },
+};
+
+
+// ══════════════════════════════════════════════
+// SCREEN FURNITURE
+// ══════════════════════════════════════════════
+
+const show = id => $('#' + id).classList.add('open');
+const shut = id => $('#' + id).classList.remove('open');
+
+function updateHud() {
+  $('#hud-num').textContent = `${S.caught.length} / ${BUGS.length}` + (S.secrets.length ? ` +${S.secrets.length}` : '');
+  $('#hud-sound').classList.toggle('off', !S.sound);
+}
+
+// The quiz shows the player's name and score in several places; this fills in all of them.
+function refreshPlayer() {
+  $$('.pname').forEach(el => el.textContent = S.name || 'undefined');
+  $$('.pscore').forEach(el => el.textContent = S.score);
+}
+
+function setApp(label, html) {
+  $('#app-q').textContent = label;
+  $('#app-body').innerHTML = html;
+  refreshPlayer();
+}
+
+// Sits the stage's bug on whatever is broken.
+function perch(el, id, corner = false) {
+  el.insertAdjacentHTML('beforeend', `<img class="bug${corner ? ' corner' : ''}" src="${sprite(id)}" alt="">`);
+}
+
+let toastTimer;
+function toast(html, ms = 4200) {
+  $('#toast').innerHTML = html;
+  $('#toast').classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').classList.remove('on'), ms);
+}
+
+function bump(el) {
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+
+// ── the duck ──
+// What the duck says in its speech bubble at the bottom. It never blocks the game.
+function quack(text) {
+  const b = $('#bubble');
+  b.textContent = text;
+  b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+  SFX.talk();
+}
+
+let hints = [], hintAt = 0, nudge;
+function setHints(list) {
+  hints = list; hintAt = 0;
+  $('#hint').hidden = !list.length;
+  $('#hint').textContent = L.hint.first;
+  $('#hint').classList.remove('nudge');
+  // somebody who is getting nowhere is pointed at the button
+  clearTimeout(nudge);
+  if (list.length) nudge = setTimeout(() => $('#hint').classList.add('nudge'), 30000);
+}
+$('#hint').onclick = () => {
+  quack(hints[Math.min(hintAt++, hints.length - 1)]);
+  $('#hint').textContent = hintAt < hints.length ? L.hint.n(hintAt + 1, hints.length) : L.hint.again;
+  $('#hint').classList.remove('nudge');
+  clearTimeout(nudge);
+};
+
+let squeaks = 0;
+$('#duck').onclick = () => {
+  const d = $('#duck');
+  d.classList.remove('squeak'); void d.offsetWidth; d.classList.add('squeak');
+  SFX.quack();
+  if (++squeaks === 5) secret('duck');
+};
+
+// The duck taking over the whole screen, for the moments that need an answer.
+function say(text, ok = L.ok, then = null, alt = '', otherwise = null) {
+  $('#say-text').textContent = text;
+  $('#say-ok').textContent = ok;
+  $('#say-alt').textContent = alt;
+  $('#say-alt').hidden = !alt;
+  $('#say-ok').onclick = () => { shut('say'); if (then) then(); };
+  $('#say-alt').onclick = () => { shut('say'); if (otherwise) otherwise(); };
+  show('say'); SFX.quack();
+}
+
+// ── the keycard ──
+function askForCard() {
+  $('#unlock-code').value = '';
+  $('#unlock-err').textContent = '';
+  show('unlock');
+  $('#unlock-code').focus();
+}
+function tryCard() {
+  const n = Card.read($('#unlock-code').value);
+  if (n === null) {
+    $('#unlock-err').textContent = L.unlock.unknown;
+    return SFX.bad();
+  }
+  S.card = n; S.borrowed = false;
+  shut('unlock'); unlockDevMode();
+}
+$('#unlock-ok').onclick = tryCard;
+$('#unlock-code').onkeydown = e => { if (e.key === 'Enter') tryCard(); };
+$('#unlock-code').oninput = () => { $('#unlock-err').textContent = ''; };
+$('#unlock-none').onclick = () => {
+  S.card = Card.DECK[Math.floor(Math.random() * Card.DECK.length)]; S.borrowed = true;
+  shut('unlock');
+  showCard(L.unlock.borrow, unlockDevMode);
+};
+
+function showCard(text = '', then = null) {
+  $('#cardview-text').textContent = text;
+  $('#cardview-text').hidden = !text;
+  $('#cardview-card').innerHTML = Card.front(S.card);
+  $('#cardview-ok').onclick = () => { shut('cardview'); if (then) then(); };
+  show('cardview');
+}
+
+function unlockDevMode() {
+  save(); SFX.unlock();
+  const f = $('#flash');
+  f.textContent = L.unlock.flash;
+  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  go('runaway');
+}
+
+// ── catching bugs ──
+// The card that explains a bug: when it is caught (`then` moves the game on), or when it
+// is looked up in the jar afterwards (closing it goes back to the jar).
+function showCaught(id, tag, then = null) {
+  const b = BUG[id], words = L.bugs[id];
+  $('#caught-tag').textContent = tag;
+  $('#caught-img').src = sprite(id);
+  $('#caught-name').textContent = words.name;
+  $('#caught-idea').innerHTML = words.idea ? L.caught.call(words.idea) : '';
+  $('#caught-text').textContent = words.text;
+  $('#caught-ok').textContent = then ? L.caught.next : L.caught.back;
+  $('#caught-ok').onclick = () => { shut('caught'); (then || openJar)(); };
+  // once the quiz is finished, a bug can be let out again to replay its part
+  $('#caught-again').hidden = !!then || !S.ended || !BUGS.includes(b);
+  $('#caught-again').onclick = () => { shut('caught'); go(id); };
+  show('caught');
+}
+
+// The stage's bug is fixed: the creature flies to the jar, its card is shown, and the game moves on.
+function fixed(id) {
+  const first = !S.caught.includes(id);
+  if (first) { S.caught.push(id); S.score++; }
+  save(); live++;
+  const card = () => {
+    updateHud(); refreshPlayer(); SFX.caught();
+    const tag = first ? L.caught.tag(S.caught.length, BUGS.length) : L.caught.repeat;
+    showCaught(id, tag, () => go(S.ended ? 'end' : ORDER[ORDER.indexOf(id) + 1]));
+  };
+  const img = $('#app .bug'), jar = $('#hud-jar');
+  if (!img) return card();
+  const from = img.getBoundingClientRect(), to = jar.getBoundingClientRect(), ghost = img.cloneNode();
+  ghost.className = 'flying';
+  Object.assign(ghost.style, { left: from.left + 'px', top: from.top + 'px', width: from.width + 'px' });
+  document.body.append(ghost); img.remove(); SFX.whoosh();
+  requestAnimationFrame(() => requestAnimationFrame(() => Object.assign(ghost.style, {
+    left: to.left + to.width / 2 - from.width / 2 + 'px', top: to.top + 'px', transform: 'rotate(540deg)',
+  })));
+  setTimeout(() => { ghost.remove(); bump(jar); card(); }, 780);
+}
+
+function secret(id) {
+  if (S.secrets.includes(id)) return;
+  S.secrets.push(id); save(); updateHud();
+  toast(`<img src="${sprite(id)}" alt=""><span><b>${L.secret.caught(L.bugs[id].name)}</b>${L.secret.more}</span>`);
+  bump($('#hud-jar')); SFX.secret();
+  if (S.stage === 'end' && S.sawEnd) license();   // the last screen counts them
+}
+
+function openJar() {
+  const tile = ({ id }, got) => got
+    ? `<button class="tile" data-id="${id}"><img src="${sprite(id)}" alt="">${L.bugs[id].name}${L.bugs[id].idea ? `<i>${L.bugs[id].idea}</i>` : ''}</button>`
+    : `<div class="tile empty"><div>?</div>${L.jar.loose}</div>`;
+  $('#jar-main').innerHTML = BUGS.map(b => tile(b, S.caught.includes(b.id))).join('');
+  // the secret bugs stay out of sight until one is found, or until the quiz is finished
+  const known = S.secrets.length || S.ended;
+  $('#jar-secret-title').hidden = $('#jar-secrets').hidden = !known;
+  $('#jar-secret-title').textContent = L.jar.secrets(S.secrets.length, SECRETS.length);
+  $('#jar-secrets').innerHTML = SECRETS.map(b => tile(b, S.secrets.includes(b.id))).join('');
+  show('jar');
+}
+$('#jar').onclick = e => {
+  const t = e.target.closest('button.tile');
+  if (!t) return;
+  shut('jar');   // the bug's card takes the jar's place
+  showCaught(t.dataset.id, BUGS.includes(BUG[t.dataset.id]) ? L.jar.tag : L.secret.tag);
+};
+$('#jar-close').onclick = () => shut('jar');
+$('#jar-reset').onclick = startOver;
+
+$('#hud-jar').onclick = openJar;
+$('#hud-card').onclick = () => showCard();
+$('#hud-lang').onclick = switchLanguage;
+$('#hud-sound').onclick = () => { S.sound = !S.sound; save(); updateHud(); SFX.tick(); };
+
+// Secret: the power button. The quiz switches off and on again, and comes back where it was.
+$('#hud-power').onclick = async () => {
+  const lines = L.boot(BUGS.length - S.caught.length);
+  $('#boot-text').textContent = '';
+  show('boot');
+  for (const line of lines) {
+    $('#boot-text').textContent += line + '\n';
+    if (line) SFX.tick();
+    await new Promise(done => setTimeout(done, 480));
+  }
+  shut('boot'); secret('reboot');
+};
+
+// Secret: the real developer tools. Whoever opens the browser console finds this note.
+console.log('%c' + L.console.hello, 'font-size: 28px; color: #e8a917');
+console.log(L.console.note);
+window.duck = window.eend = () => { secret('inspector'); return L.console.done; };   // the note names it in its own language
+
+
+// ══════════════════════════════════════════════
+// THE CODE PANE
+// ══════════════════════════════════════════════
+
+// Code is shown as plain sentences, one per line. These helpers color the words.
+const kw = s => `<b class="kw">${s}</b>`;                 // a word the computer understands: when, if, repeat…
+const v = s => `<span class="var">${s}</span>`;           // a variable: a box with a name on it
+const str = s => `<span class="str">"${s}"</span>`;       // a piece of text
+const thing = s => `<span class="thing">${s}</span>`;     // something on the screen, such as a button
+
+// And these make the yellow boxes the player can change. `id` is how the stage asks for the value.
+// The choices of `pick` are [value, what the player reads]: the game only ever looks at the value.
+const pick = (id, choices) =>
+  `<select class="slot" data-slot="${id}">${choices.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select>`;
+const num = (id, value, len) =>
+  `<input class="slot num" data-slot="${id}" inputmode="numeric" autocomplete="off" maxlength="${len}" size="${len}" value="${value}">`;
+const txt = (id, value, hint) =>
+  `<input class="slot" data-slot="${id}" autocomplete="off" spellcheck="false" maxlength="14" size="13" placeholder="${hint}" value="${esc(value)}">`;
+
+const Code = {
+  change: null,   // (slot id, new value): the player changed a yellow box
+  move: null,     // (line id, -1 or 1): the player pressed an arrow on a line
+  run: null,      // the player pressed Run
+
+  // Each line is [id, how far it is indented, its html, whether it can be moved]; [] is an empty line.
+  set(title, lines, run = null) {
+    $('#code-title').textContent = title;
+    $('#code').innerHTML = lines.map(([id = '', depth = 0, html = '&nbsp;', movable = false]) => `
+      <li data-line="${id}">
+        <span class="src" style="padding-left:${depth * 2}em">${html}</span>
+        ${movable ? `<span class="mv"><button data-by="-1" title="${L.code.up}">▲</button><button data-by="1" title="${L.code.down}">▼</button></span>` : ''}
+      </li>`).join('');
+    this.run = run;
+    $('#run').hidden = !run;
+    this.lock(false);
+  },
+  // Lights a line up, the way it does when the computer runs it.
+  flash(id) {
+    const li = $(`#code [data-line="${id}"]`);
+    if (!li) return;
+    li.classList.remove('run'); void li.offsetWidth; li.classList.add('run');
+  },
+  // While a program runs, the code cannot be changed.
+  lock(on) {
+    $('#code-pane').classList.toggle('locked', on);
+    $('#run').disabled = on;
+  },
+  value: id => $(`#code [data-slot="${id}"]`).value,
+  number: (id, max) => Math.min(+Code.value(id).replace(/\D/g, '') || 0, max),
+};
+$('#code').addEventListener('input', e => {
+  const slot = e.target.dataset.slot;
+  if (!slot) return;
+  if (e.target.classList.contains('num')) e.target.value = e.target.value.replace(/\D/g, '');
+  if (Code.change) Code.change(slot, e.target.value);
+});
+$('#code').addEventListener('click', e => {
+  const b = e.target.closest('[data-by]');
+  if ($('#code-pane').classList.contains('locked')) return;   // CSS keeps the mouse out while a program runs; this stops the keyboard
+  if (b && Code.move) Code.move(b.closest('li').dataset.line, +b.dataset.by);
+});
+$('#run').onclick = () => Code.run && Code.run();
+
+
+// ══════════════════════════════════════════════
+// STAGES
+// ══════════════════════════════════════════════
+
+const STAGES = {};
+const ORDER = ['start', 'runaway', 'undefined', 'scrambler', 'yesbug', 'clicker', 'cipher', 'end'];
+
+function go(id) {
+  S.stage = id; save(); live++;
+  $$('.overlay.open').forEach(o => o.classList.remove('open'));
+  document.body.classList.toggle('dev', S.card !== null && id !== 'start' && id !== 'end');
+  document.body.classList.toggle('end', id === 'end');
+  $('#app-body').className = 'app-body';
+  $('#app-body').onpointermove = null;
+  Code.change = Code.move = null;
+  Code.set('', []);
+  setHints([]);
+  updateHud();
+  if ($('#staff-at')) $('#staff-at').textContent = id;
+  STAGES[id].enter();
+  scrollTo(0, 0);
+}
+
+// ── START ── a perfectly ordinary quiz
+STAGES.start = {
+  enter() {
+    setApp('', `
+      <div class="start">
+        <h1>${L.title}</h1>
+        <p>${L.start.sub}</p>
+        <button class="app-btn big" id="start">${L.start.go}</button>
+        <small>${L.start.small}</small>
+        <button class="lang-link" id="start-lang">${TEXT[nextLanguage()].name}</button>
+      </div>
+      <img class="crawler" src="${sprite('runaway')}" alt="">`);
+    $('#start').onclick = () => { S.began = Date.now(); SFX.tick(); go('runaway'); };
+    $('#start-lang').onclick = switchLanguage;
+  },
+};
+
+// ── BUG 1: THE RUNAWAY ── the Next button gets out of the way. Idea: events.
+// Played twice: first as a plain quiz, until the button has got away three times and the
+// duck asks for the keycard; then again with the code next to it.
+STAGES.runaway = {
+  enter() {
+    const dev = S.card !== null, T = L.runaway;
+    setApp(L.question(1), `
+      <div class="q-text">${L.q1.text}</div>
+      ${L.q1.answers.map(a => `<button class="ans">${a}</button>`).join('')}
+      <button class="app-btn perch" id="next" ${dev ? '' : 'hidden'}>${L.q1.next} ➜</button>`);
+    const arena = $('#app-body'), next = $('#next');
+    let mode = 'jump', near = false, dodges = 0, size = 1;   // mode: one of T.modes
+    perch(next, 'runaway');
+
+    $$('.ans', arena).forEach(b => b.onclick = () => {
+      $$('.ans', arena).forEach(o => o.classList.toggle('sel', o === b));
+      next.hidden = false; SFX.tick();
+    });
+
+    // how far a point is from the edge of the button
+    const gap = (x, y) => {
+      const r = next.getBoundingClientRect();
+      return Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+    };
+
+    function jump(x, y) {
+      const a = arena.getBoundingClientRect(), w = next.offsetWidth, h = next.offsetHeight;
+      let left, top, tries = 0;
+      do {
+        left = 8 + Math.random() * (a.width - w - 16);
+        top = 8 + Math.random() * (a.height - h - 16);
+      } while (++tries < 40 && Math.hypot(a.left + left + w / 2 - x, a.top + top + h / 2 - y) < Math.min(a.width, a.height) * .45);
+      Object.assign(next.style, { left: left + 'px', top: top + 'px', right: 'auto', bottom: 'auto' });
+    }
+
+    // Line 2 of the code: what the button does when something comes near.
+    function react(x, y) {
+      Code.flash('near'); Code.flash('do');
+      if (mode === 'jump') {
+        jump(x, y); SFX.dodge(); dodges++;
+        near = false;   // it has landed well away from the pointer
+        if (!dev && dodges === 3) after(600, breakTheQuiz);
+        if (dev && dodges === 2) quack(T.see);
+      }
+      if (mode === 'spin') { next.classList.remove('spin'); void next.offsetWidth; next.classList.add('spin'); }
+      if (mode === 'grow') { size = Math.min(size + .4, 7); next.style.transform = `scale(${size})`; }
+      if (mode === 'hide') next.classList.add('gone');
+    }
+
+    arena.onpointermove = e => {
+      if (e.pointerType === 'touch' || next.hidden) return;
+      const d = gap(e.clientX, e.clientY);
+      if (d < 46 && !near) { near = true; react(e.clientX, e.clientY); }
+      if (d > 70 && near) { near = false; next.classList.remove('gone'); }
+    };
+    // a finger never "comes near": it just lands, so on a touch screen landing counts as coming near
+    next.onpointerdown = e => {
+      if (e.pointerType === 'touch' && (mode === 'spin' || mode === 'grow')) react(e.clientX, e.clientY);
+    };
+    next.onclick = e => {
+      if (mode === 'jump' || mode === 'hide') {   // only fingers and the Enter key ever get this far
+        react(e.clientX, e.clientY);
+        if (mode === 'hide') after(1200, () => next.classList.remove('gone'));
+        return;
+      }
+      Code.flash('click'); Code.flash('goto'); SFX.good();
+      next.disabled = true;
+      after(600, () => fixed('runaway'));
+    };
+
+    function breakTheQuiz() {
+      $('#app').classList.add('glitch'); SFX.glitch();
+      after(950, () => {
+        $('#app').classList.remove('glitch');
+        say(T.say1, T.who, () => say(T.say2, T.yes, askForCard, T.no, $('#unlock-none').onclick));
+      });
+    }
+
+    if (!dev) return;
+    Code.set(T.file, [
+      ['near', 0, fmt(T.near)],
+      ['do', 1, fmt(T.act, { do: pick('do', Object.entries(T.modes)) })],
+      [],
+      ['click', 0, fmt(T.click)],
+      ['goto', 1, L.goto],
+    ]);
+    Code.change = (id, value) => {
+      mode = value; near = false; size = 1;
+      next.style.transform = '';
+      next.classList.remove('gone', 'spin');
+      quack(T.reply[value]);
+    };
+    setHints(L.hints.runaway);
+    quack(T.intro);
+  },
+};
+
+// ── BUG 2: MR. UNDEFINED ── the quiz does not know who is playing. Idea: variables.
+// Secret: change the score as well, which nobody asked for.
+STAGES.undefined = {
+  enter() {
+    const T = L.undef;
+    setApp(T.label, `
+      <div class="q-text">${T.nice}<span class="perch" id="who"><span class="pname"></span></span>!</div>
+      <p class="q-sub">${L.app.score} <b class="pscore"></b></p>
+      <button class="app-btn" id="cont">${T.as}<span class="pname"></span></button>
+      <p class="warn" id="cont-warn">${T.warn}</p>`);
+    perch($('#who'), 'undefined');
+    const honest = S.score;
+    let told = false;
+
+    Code.set(T.file, [
+      ['name', 0, fmt(T.name, { name: txt('name', S.name, T.empty) })],
+      ['score', 0, fmt(T.score, { score: num('score', S.score, 4) })],
+      [],
+      ['hello', 0, fmt(T.hello)],
+      ['points', 0, fmt(T.points)],
+      ['button', 0, fmt(T.button)],
+    ]);
+    const sync = () => {
+      refreshPlayer();
+      $('#cont').disabled = !S.name;
+      $('#cont-warn').hidden = !!S.name;
+    };
+    Code.change = (id, value) => {
+      if (id === 'name') {
+        S.name = value.trim();
+        Code.flash('hello'); Code.flash('button');
+        if (S.name && !told) { told = true; quack(T.told); }
+      }
+      if (id === 'score') {
+        S.score = +value || 0;
+        Code.flash('points');
+        if (S.score !== honest) secret('cheater');
+      }
+      save(); sync();
+    };
+    $('#cont').onclick = () => { SFX.good(); fixed('undefined'); };
+    sync();
+    setHints(L.hints.undefined);
+    quack(S.name ? T.told : T.intro);   // the name is already there on a replay or after a change of language
+  },
+};
+
+// ── QUESTION 2 ── shared by bugs 3 and 4. The question is a little program, and running it
+// plays its lines one by one, the way a computer would.
+const PYTHON = 0;    // which of its answers is a programming language: the first, in every language
+let lastPick = -1;   // which answer the player gave when the question last ran properly; -1 for none
+
+function stageQuestion(bug) {
+  setApp(L.question(2), `
+    <div class="q-text" id="q2-text" hidden>${L.q2.text}</div>
+    <div id="q2-answers" hidden>${L.q2.answers.map(a => `<button class="ans" disabled>${a}</button>`).join('')}</div>
+    <p class="wait" id="q2-wait" hidden></p>
+    <div class="banner" id="q2-banner" hidden></div>
+    <p class="idle" id="q2-idle">${L.q2.idle}</p>`);
+  perch($('#app-body'), bug, true);
+}
+
+// Runs the lines in `lines`, top to bottom. `judge` is only for the line 'if': it says
+// whether an answer counts as correct. Resolves to what happened (`picked` is the number of
+// the answer, counting from 0), or to null when the player has moved on in the meantime.
+async function runQuestion(lines, judge) {
+  const t = live, banner = $('#q2-banner');
+  const verdict = ok => {
+    banner.hidden = false;
+    banner.className = 'banner ' + (ok ? 'good' : 'bad');
+    banner.textContent = ok ? L.correct : L.wrong;
+    ok ? SFX.good() : SFX.bad();
+  };
+  Code.lock(true);
+  ['q2-text', 'q2-answers', 'q2-wait', 'q2-banner'].forEach(id => $('#' + id).hidden = true);
+  $('#q2-idle').hidden = true;
+  $$('#q2-answers .ans').forEach(b => { b.disabled = true; b.classList.remove('sel'); });
+  let picked = -1, hung = false;
+
+  for (const line of lines) {
+    if (!await pause(650)) return null;
+    Code.flash(line); SFX.tick();
+    if (line === 'question') $('#q2-text').hidden = false;
+    if (line === 'buttons') $('#q2-answers').hidden = false;
+    if (line === 'cheer') verdict(true);
+    if (line === 'wait') {
+      $('#q2-wait').hidden = false;
+      $('#q2-wait').textContent = L.q2.waiting;
+      if ($('#q2-answers').hidden) {   // nothing to click: the program would wait forever
+        hung = true;
+        if (!await pause(3000)) return null;
+        $('#q2-wait').textContent = L.q2.stuck;
+        break;
+      }
+      const btn = await new Promise(done => $$('#q2-answers .ans').forEach(b => { b.disabled = false; b.onclick = () => done(b); }));
+      if (t !== live) return null;
+      $$('#q2-answers .ans').forEach(b => b.disabled = true);
+      btn.classList.add('sel');
+      picked = $$('#q2-answers .ans').indexOf(btn);
+      $('#q2-wait').hidden = true;
+    }
+    if (line === 'if') {
+      const ok = judge(picked);
+      if (!await pause(650)) return null;
+      if (!ok) { Code.flash('else'); if (!await pause(450)) return null; }
+      Code.flash(ok ? 'then' : 'wrong');
+      verdict(ok);
+    }
+  }
+  Code.lock(false);
+  return { picked, hung };
+}
+
+// ── BUG 3: THE SCRAMBLER ── the right lines in the wrong order. Idea: sequence.
+STAGES.scrambler = {
+  enter() {
+    const T = L.scrambler;
+    const order = ['cheer', 'wait', 'buttons', 'question'];
+    const at = id => order.indexOf(id);
+    const draw = () => Code.set(L.q2.file, order.map(id => [id, 0, fmt(L.q2.code[id]), true]), run);
+    let first = true;
+
+    Code.move = (id, by) => {
+      const i = at(id), j = i + by;
+      if (j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]];
+      draw(); Code.flash(id); SFX.tick();
+    };
+
+    async function run() {
+      const out = await runQuestion(order);
+      if (!out) return;
+      if (first && out.hung) {
+        first = false;
+        return quack(T.first);
+      }
+      if (out.hung) return quack(T.stuck);
+      if (at('cheer') < at('wait')) return quack(T.early);
+      if (at('wait') < at('question')) return quack(T.blind);
+      lastPick = out.picked;
+      quack(at('buttons') < at('question') ? T.odd : T.won);
+      after(1500, () => fixed('scrambler'));
+    }
+
+    stageQuestion('scrambler');
+    draw();
+    setHints(L.hints.scrambler);
+    quack(T.intro);
+    after(900, run);
+  },
+};
+
+// ── BUG 4: THE YES-BUG ── every answer is correct. Idea: conditions.
+STAGES.yesbug = {
+  enter() {
+    const T = L.yesbug, code = L.q2.code, answers = L.q2.answers;
+    let right = 'any';   // what line 4 accepts: 'any', or 'a0' for the first answer, 'a1' for the second…
+    stageQuestion('yesbug');
+    Code.set(L.q2.file, [
+      ['question', 0, fmt(code.question)],
+      ['buttons', 0, fmt(code.buttons)],
+      ['wait', 0, fmt(code.wait)],
+      ['if', 0, fmt(code.if, { right: pick('right', [['any', code.any], ...answers.map((a, i) => ['a' + i, a])]) })],
+      ['then', 1, fmt(code.cheer)],
+      ['else', 0, fmt(code.else)],
+      ['wrong', 1, fmt(code.boo)],
+    ], run);
+    Code.change = (id, value) => { right = value; };
+
+    async function run() {
+      const out = await runQuestion(['question', 'buttons', 'wait', 'if'], picked => right === 'any' || right === 'a' + picked);
+      if (!out) return;
+      const picked = answers[out.picked], accepted = answers[right.slice(1)];   // as the player reads them
+      if (right === 'a' + PYTHON) {
+        quack(out.picked === PYTHON ? T.meant : T.honest);
+        return after(1200, () => fixed('yesbug'));
+      }
+      if (right === 'any') quack(T.any(picked));
+      else if (picked === accepted) quack(T.believes(accepted));
+      else quack(T.called(picked, accepted));
+    }
+
+    setHints(L.hints.yesbug);
+    quack(lastPick < 0 ? T.intro : lastPick === PYTHON ? T.introRight : T.introWrong(answers[lastPick]));
+  },
+};
+
+// ── BUG 5: THE FINGER-BREAKER ── a hundred clicks. Idea: loops.
+// Secrets: stop at 99, ask for far too many, or refuse the loop and click all hundred by hand.
+STAGES.clicker = {
+  enter() {
+    const T = L.clicker;
+    setApp(L.question(3), `
+      <div class="q-text">${T.title}</div>
+      <p class="q-sub">${T.sub}</p>
+      <div class="clicker perch">
+        <button class="app-btn big" id="clk">${T.button}</button>
+        <div class="count"><b id="clk-n">0</b> / 100</div>
+      </div>
+      <div class="meter"><i id="clk-bar"></i></div>
+      <p class="q-sub" id="clk-done" style="margin-top:14px"></p>`);
+    const arena = $('#app-body'), btn = $('#clk');
+    perch(btn.parentNode, 'clicker', true);
+    let clicks = 0, byHand = 0, t0 = 0, offered = false, done = false;
+    let loopAt = 0, loopFrom = 0, looping = false;   // when the loop last started, at how many clicks, and whether it is still going
+
+    const BASE = [
+      ['when', 0, fmt(T.code.when)],
+      ['add', 1, fmt(T.code.add)],
+      [],
+      ['reach', 0, fmt(T.code.reach)],
+      ['goto', 1, L.goto],
+    ];
+    Code.set(T.file, BASE);
+
+    const showCount = () => {
+      $('#clk-n').textContent = clicks;
+      $('#clk-bar').style.width = Math.min(clicks, 100) + '%';
+    };
+
+    function press(mine) {
+      if (done) return;
+      if (!t0) t0 = performance.now();
+      clicks++; if (mine) byHand++;
+      showCount(); Code.flash('when'); Code.flash('add'); SFX.tick();
+      if (clicks >= 100) return finish();
+      if (byHand === 8 && !offered) offerLoop();
+    }
+    btn.onclick = () => press(true);
+
+    // After a few clicks by hand, the duck adds two lines that can do the clicking.
+    function offerLoop() {
+      offered = true;
+      Code.set(T.file, [...BASE, [],
+        ['repeat', 0, fmt(T.code.repeat, { times: num('times', 1, 5) })],
+        ['press', 1, fmt(T.code.press)],
+      ], run);
+      $$('#code li').slice(-2).forEach(li => li.classList.add('fresh'));
+      setHints(L.hints.clicker);
+      quack(T.offer(100 - clicks));
+    }
+
+    async function run() {
+      const n = Code.number('times', 99999);
+      Code.lock(true); Code.flash('repeat');
+      loopAt = performance.now(); loopFrom = clicks; looping = true;
+      if (n >= 1000) return overflow(n);
+      const beat = Math.max(6, Math.min(70, 2400 / n));   // never slower than a finger, never longer than a few seconds
+      for (let i = 0; i < n && !done; i++) {
+        Code.flash('press');
+        btn.classList.toggle('down');
+        press(false);
+        if (!await pause(beat)) return;
+      }
+      btn.classList.remove('down');
+      if (done) return;
+      looping = false;
+      Code.lock(false);
+      if (n === 0) quack(T.zero);
+      else if (clicks === 99) { secret('offbyone'); quack(T.ninetynine); }
+      else quack(T.sofar(clicks, n));
+    }
+
+    // Far more clicks than the bar was built for: it grows right out of the window.
+    async function overflow(n) {
+      arena.classList.add('spill');
+      const from = clicks;
+      for (let i = 1; i <= 34; i++) {
+        clicks = from + Math.round(n * i / 34);
+        $('#clk-n').textContent = clicks;
+        $('#clk-bar').style.width = 100 + i * i * 3 + '%';
+        Code.flash('press'); SFX.tick();
+        if (!await pause(45)) return;
+      }
+      secret('overflow');
+      quack(T.overflow(n));
+      finish();
+    }
+
+    function finish() {
+      done = true; btn.disabled = true;
+      Code.lock(true); Code.flash('reach'); Code.flash('goto');
+      const secs = from => ((performance.now() - from) / 1000).toFixed(1).replace('.', L.decimal);
+      $('#clk-done').textContent = looping ? T.doneLoop(clicks, clicks - loopFrom, secs(loopAt))
+        : byHand >= 100 ? T.doneHand(secs(t0))
+        : T.doneBoth;
+      if (byHand >= 100) secret('hardway');
+      if (looping && !arena.classList.contains('spill')) quack(T.spirit(byHand));
+      SFX.good();
+      after(1900, () => fixed('clicker'));
+    }
+
+    quack(T.intro);
+    after(15000, () => { if (!offered && !done) offerLoop(); });   // for those who refuse to start clicking
+  },
+};
+
+// ── BUG 6: THE GIBBERISH ── the last question is scrambled. Idea: algorithms.
+// The key and the decoder strip are on the player's keycard. First one word is decoded by
+// hand, to find out what the steps are; then those steps become a program.
+STAGES.cipher = {
+  enter() {
+    const T = L.cipher, key = Card.key(S.card), word = T.question.split(' ')[0];
+    const plain = [T.question, ...T.answers, (S.name || T.me).toUpperCase()];   // the question and its three answers
+    const scrambled = plain.map(t => Card.shift(t, key));
+    const letters = scrambled.flatMap(t => [...t.replace(/ /g, '')]);   // every letter on the screen, in reading order
+    const tiles = text => text.split(' ').map(w => `<span class="word">${[...w].map(ch => `<i>${esc(ch)}</i>`).join('')}</span>`).join('');
+
+    setApp(L.question(4), `
+      <div class="tiles perch" id="cy-q">${tiles(scrambled[0])}</div>
+      <div id="cy-hand">
+        <p class="q-sub">${T.take}</p>
+        <div class="hand">${[...scrambled[0].slice(0, word.length)].map(ch =>
+          `<label><b>${ch}</b><span>▼</span><input maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>`).join('')}</div>
+      </div>
+      ${[1, 2, 3].map(i => `<button class="ans tiles" data-i="${i}" disabled>${tiles(scrambled[i])}</button>`).join('')}
+      <div class="banner good" id="cy-banner" hidden>${L.correct}</div>`);
+    perch($('#cy-q'), 'cipher');
+    const cells = $$('#app-body .tiles i'), boxes = $$('.hand input');
+    cells.slice(0, word.length).forEach(c => c.className = 'now');
+
+    // ── by hand ──
+    boxes.forEach((box, i) => box.oninput = () => {
+      const typed = box.value.toUpperCase();
+      if (!typed) return;
+      if (typed !== word[i]) {
+        box.value = ''; SFX.bad();
+        box.classList.remove('no'); void box.offsetWidth; box.classList.add('no');
+        return;
+      }
+      box.value = typed; box.disabled = true; box.classList.add('ok');
+      cells[i].textContent = typed; cells[i].className = 'done';
+      SFX.tick();
+      if (boxes[i + 1]) boxes[i + 1].focus(); else after(700, writeDecoder);
+    });
+
+    // ── as a program ──
+    function writeDecoder() {
+      $('#cy-hand').hidden = true;
+      Code.set(T.file, [
+        ['key', 0, fmt(T.code.key, { key: num('key', 0, 2) })],
+        [],
+        ['for', 0, fmt(T.code.for, { span: pick('span', Object.entries(T.code.spans)) })],
+        ['move', 1, fmt(T.code.move)],
+        ['show', 1, fmt(T.code.show)],
+      ], run);
+      $$('#code li').forEach(li => li.classList.add('fresh'));
+      setHints(L.hints.decoder);
+      const left = letters.filter(ch => Card.ABC.includes(ch)).length - word.length;
+      quack(T.written(left));
+    }
+
+    async function run() {
+      const k = Code.number('key', 25), all = Code.value('span') === 'all';
+      const loop = $$('#code li').slice(2);
+      Code.lock(true); Code.flash('key');
+      $$('#app-body .ans').forEach(b => b.disabled = true);
+      cells.forEach((c, i) => { c.textContent = letters[i]; c.className = ''; });
+      if (!await pause(500)) return;
+      for (let i = 0; i < (all ? cells.length : 1); i++) {
+        const c = cells[i], real = Card.shift(letters[i], -k);
+        if (i < 3) {   // the first few slowly enough to follow, line by line
+          Code.flash('for'); c.className = 'now';
+          if (!await pause(380)) return;
+          Code.flash('move'); c.textContent = real; SFX.tick();
+          if (!await pause(380)) return;
+          Code.flash('show'); c.className = 'done';
+          if (!await pause(380)) return;
+        } else {       // and then as fast as it goes
+          loop.forEach(li => li.classList.add('hot'));
+          c.textContent = real; c.className = 'done';
+          if (i % 2) SFX.tick();
+          if (!await pause(40)) return;
+        }
+      }
+      loop.forEach(li => li.classList.remove('hot'));
+      Code.lock(false);
+      if (all && k === key) {
+        $$('#app-body .ans').forEach(b => b.disabled = false);
+        SFX.good();
+        return quack(T.solved);
+      }
+      if (!all && k === key) quack(T.oneRight);
+      else if (!all) quack(T.oneWrong(k));
+      else quack(T.nonsense);
+    }
+
+    $$('#app-body .ans').forEach(b => b.onclick = () => {
+      if (b.dataset.i === '1') { SFX.bad(); return quack(T.developer); }
+      if (b.dataset.i === '2') { SFX.bad(); return quack(T.duck); }
+      b.classList.add('sel');
+      $$('#app-body .ans').forEach(o => o.disabled = true);
+      $('#cy-banner').hidden = false;
+      if (!S.ended) S.ended = Date.now();
+      SFX.good();
+      after(1100, () => fixed('cipher'));
+    });
+
+    Code.set(T.file, [['todo', 0, fmt(T.code.todo)]]);
+    setHints(L.hints.byhand);
+    quack(T.intro);
+    if (S.borrowed) after(2500, () => $('#hud-card').classList.add('bump'));
+  },
+};
+
+
+// ══════════════════════════════════════════════
+// THE END
+// ══════════════════════════════════════════════
+
+// How long the quiz took, in words; '' when nobody timed it.
+function took() {
+  if (!S.began || !S.ended) return '';
+  const seconds = Math.round((S.ended - S.began) / 1000);
+  return L.took(Math.floor(seconds / 60), seconds % 60);
+}
+
+STAGES.end = {
+  enter() {
+    if (S.sawEnd) return license();
+    finale(() => { S.sawEnd = true; save(); license(); });
+  },
+};
+
+// The developer comes back from lunch.
+function finale(then) {
+  const lines = L.finale((S.name || L.someone).toUpperCase(), S.caught.length, took());   // each: who speaks, and what
+  const log = $('#chat-log'), t = live;
+  let i = 0, timer;
+  log.innerHTML = '';
+  $('#chat-ok').hidden = true;
+  show('chat');
+  function next() {
+    clearTimeout(timer);
+    if (t !== live) return;
+    if (i === lines.length) { $('#chat-ok').hidden = false; return; }
+    const [who, text] = lines[i++];
+    log.insertAdjacentHTML('beforeend', who ? `<p><b class="${who}">${L.chat[who]}</b>${esc(text)}</p>` : `<p class="sys">${esc(text)}</p>`);
+    log.scrollTop = log.scrollHeight;
+    SFX.talk();
+    timer = setTimeout(next, 900 + text.length * 22);
+  }
+  log.onclick = next;   // for the impatient
+  $('#chat-ok').onclick = () => { shut('chat'); then(); };
+  next();
+}
+
+// The last screen: what the player did, what it is called, and a bug to take home.
+function license() {
+  const T = L.end, P = T.python, card = S.card ?? Card.DECK[0], key = Card.key(card), found = S.secrets.length;
+  const rank = T.ranks[found >= 5 ? 3 : found >= 3 ? 2 : found >= 1 ? 1 : 0];
+  const invitation = local(SETTINGS.invitation), prize = local(SETTINGS.prize);
+  const c = (cls, s) => `<span class="${cls}">${s}</span>`;
+  $('#end').innerHTML = `
+    <div class="box lic-head">
+      <img src="${Card.DUCK}" alt="">
+      <div>
+        <div class="tag">${T.license} · ${rank}</div>
+        <div class="lic-name">${esc((S.name || T.anonymous).toUpperCase())}</div>
+        <p>${T.caught(S.caught.length, BUGS.length, took())} · ${T.score(S.score, S.secrets.includes('cheater'))}</p>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>${T.names}</h3>
+      <div class="lic-list">${BUGS.map(({ id }) => `
+        <div class="${S.caught.includes(id) ? '' : 'lost'}"><img src="${sprite(id)}" alt=""><span><b>${L.bugs[id].word}</b>${L.bugs[id].name}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>${T.own}</h3>
+      <div class="own">
+        <img src="${Card.bug(card)}" alt="">
+        <pre>${Card.grid(card).map(r => r.join('')).join('\n')}</pre>
+        <p>${T.ownText(S.borrowed)}</p>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>${T.secrets(found, SECRETS.length)}</h3>
+      <p style="margin-bottom:14px">${found === SECRETS.length ? T.all : T.hiding}</p>
+      <button class="btn ghost" id="end-jar">${T.jar}</button>
+    </div>
+
+    <div class="box">
+      <h3>${T.real}</h3>
+      <pre class="real">${c('var', P.key)} = ${key}
+${c('var', P.message)} = ${c('str', '"' + Card.shift(L.cipher.question, key) + '"')}
+${c('var', P.alphabet)} = ${c('str', '"' + Card.ABC + '"')}
+
+${c('kw', 'for')} letter ${c('kw', 'in')} ${P.message}:
+    ${c('kw', 'if')} letter ${c('kw', 'in')} ${P.alphabet}:
+        letter = ${P.alphabet}[${P.alphabet}.index(letter) - ${P.key}]
+    print(letter, end=${c('str', '""')})</pre>
+      <p>${T.pythonText}</p>
+    </div>
+
+    <div class="cta">
+      ${invitation ? `<p>${invitation}</p>` : ''}
+      ${prize ? `<b>${prize}</b>` : ''}
+      <b>${[SETTINGS.organisation, SETTINGS.link].filter(Boolean).join(' · ')}</b>
+    </div>
+    <div class="btn-row"><button class="btn" id="end-again">${T.next}</button></div>`;
+  $('#end-jar').onclick = openJar;
+  $('#end-again').onclick = startOver;
+}
+
+
+// ══════════════════════════════════════════════
+// AT THE STAND
+// ══════════════════════════════════════════════
+
+// A player who walks away halfway leaves the game ready for the next one.
+let lastTouch = Date.now();
+const touched = () => { lastTouch = Date.now(); shut('idle'); };
+['pointerdown', 'pointermove', 'keydown'].forEach(ev => addEventListener(ev, touched));
+$('#idle-ok').onclick = touched;
+const IDLE_WARNING = 20;   // seconds of "Still there?" before starting over
+setInterval(() => {
+  if (!SETTINGS.idleSeconds || S.stage === 'start') return;
+  const left = SETTINGS.idleSeconds + IDLE_WARNING - (Date.now() - lastTouch) / 1000;
+  if (left <= 0) return startOver();
+  if (left <= IDLE_WARNING) { $('#idle-text').textContent = L.idle.text(Math.ceil(left)); show('idle'); }
+}, 1000);
+
+// index.html?staff adds a small bar for whoever runs the stand: start over, or step through the stages.
+if (new URLSearchParams(location.search).has('staff')) {
+  $('#staff').hidden = false;
+  $('#staff').innerHTML = '<button data-do="new" id="staff-new"></button><button data-do="-1">◀</button><span id="staff-at"></span><button data-do="1">▶</button>';
+  $('#staff').onclick = e => {
+    const what = e.target.dataset.do;
+    if (!what) return;
+    if (what === 'new') return startOver();
+    const to = ORDER[ORDER.indexOf(S.stage) + +what];
+    if (!to) return;
+    if (S.card === null && to !== 'start') { S.card = Card.DECK[0]; S.borrowed = true; }
+    go(to);
+  };
+}
+
+
+// ══════════════════════════════════════════════
+// GO
+// ══════════════════════════════════════════════
+
+$$('.say-duck').forEach(img => img.src = Card.DUCK);
+$('#duck img').src = Card.DUCK;
+$('#hud-jar-img').src = sprite('runaway');
+$('#hud-power-img').src = Card.POWER;
+labels();
+go(STAGES[S.stage] ? S.stage : 'start');
+</script>
+</body>
+</html>

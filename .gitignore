@@ -1,0 +1,5 @@
+# macOS folder settings
+.DS_Store
+
+# personal Claude Code settings (the shared preview setup in .claude/launch.json is kept)
+.claude/settings.local.json

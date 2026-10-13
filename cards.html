@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaarten om af te drukken</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @font-face { font-family: 'Jersey 10'; src: url('fonts/Jersey10-Regular.ttf') format('truetype'); }
+    @page { size: A4; margin: 0; }
+    body { background: #6b7280; font: 15px/1.4 Arial, Helvetica, sans-serif; }
+
+    .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 14px 20px; background: #1a1420; color: #fff; }
+    .bar input[type=number] { width: 70px; font: inherit; padding: 3px 6px; }
+    .bar select { font: inherit; padding: 3px 6px; }
+    .bar button { font: inherit; font-weight: bold; padding: 6px 18px; cursor: pointer; }
+    .bar p { flex-basis: 100%; color: #cbd5e1; font-size: 13px; }
+
+    /* One A4 page with nine cards of 63 × 88 mm, the size of a playing card.
+       The thin lines between them are where to cut. */
+    .sheet {
+      width: 210mm; height: 297mm; margin: 20px auto; background: #fff;
+      display: grid; grid-template-columns: repeat(3, 63mm); grid-template-rows: repeat(3, 88mm);
+      justify-content: center; align-content: center;
+      break-after: page;
+    }
+    .sheet .keycard { outline: .2mm dashed #9ca3af; }
+
+    @media print {
+      body { background: none; }
+      .bar { display: none; }
+      .sheet { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bar">
+  <label><span data-t="language"></span> <select id="lang"></select></label>
+  <label><span data-t="cards"></span> <input type="number" id="count" min="1" max="900" value="27"></label>
+  <label><span data-t="from"></span> <input type="number" id="from" min="1" max="1400" value="1"></label>
+  <label><input type="checkbox" id="backs" checked> <span data-t="backs"></span></label>
+  <button onclick="print()" data-t="print"></button>
+  <p data-t="note"></p>
+</div>
+<div id="sheets"></div>
+
+<script src="settings.js"></script>
+<script src="text.js"></script>
+<script src="card.js"></script>
+<script>
+const PER_SHEET = 9;
+const $ = id => document.getElementById(id);
+
+// The cards are printed in one language at a time: the one in the address (cards.html?lang=en),
+// else the one in settings.js. The bar above them speaks the same language.
+$('lang').innerHTML = LANGUAGES.map(code => `<option value="${code}">${TEXT[code].name}</option>`).join('');
+$('lang').value = useLanguage(new URLSearchParams(location.search).get('lang') || SETTINGS.language);
+$('lang').oninput = () => { useLanguage($('lang').value); draw(); };
+
+function draw() {
+  document.title = L.print.title;
+  document.querySelectorAll('[data-t]').forEach(el => el.textContent = L.print[el.dataset.t]);
+  const from = Math.max(1, +$('from').value || 1), count = Math.max(1, +$('count').value || 1);
+  const back = `<div class="sheet">${Card.back().repeat(PER_SHEET)}</div>`;
+  let html = '';
+  for (let i = 0; i < count; i += PER_SHEET) {
+    let cards = '';
+    for (let number = from + i; number < from + Math.min(i + PER_SHEET, count); number++) {
+      cards += Card.front(Card.DECK[(number - 1) % Card.DECK.length], number);
+    }
+    html += `<div class="sheet">${cards}</div>` + ($('backs').checked ? back : '');
+  }
+  $('sheets').innerHTML = html;
+}
+['count', 'from', 'backs'].forEach(id => $(id).oninput = draw);
+draw();
+</script>
+</body>
+</html>
