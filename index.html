@@ -11,7 +11,13 @@
     /* Jersey 10 (SIL Open Font License), bundled so the game works offline */
     @font-face { font-family: 'Jersey 10'; src: url('fonts/Jersey10-Regular.ttf') format('truetype'); }
 
-    :root { --ink: #1a1420; --night: #14121f; --panel: #1e293b; --gold: #ffd23f; --orange: #f97316; }
+    :root {
+      --ink: #1a1420; --night: #14121f; --panel: #1e293b; --gold: #ffd23f; --orange: #f97316;
+      --col: 860px;   /* the game is this wide at most, however wide the screen is */
+    }
+    /* On a laptop or a monitor the quiz and its code sit side by side, so that both fit on
+       the screen without scrolling; that takes a wider block. */
+    @media (min-width: 900px) { body.dev { --col: 1180px; } }
     html { font-size: 21px; }   /* the pixel font is narrow, so everything is set a size up */
 
     /* Three looks. Until developer mode is unlocked the page is as dull as the quiz;
@@ -54,16 +60,23 @@
     .btn-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
 
     /* ── HUD ── */
-    #hud { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px 10px; }
-    /* until developer mode is unlocked only the language switch is up here, as dull as the quiz */
-    body:not(.dev):not(.end) #hud { justify-content: flex-end; }
-    body:not(.dev):not(.end) .hud-title, body:not(.dev):not(.end) .hud-btn:not(#hud-lang) { display: none; }
+    #hud {
+      order: -2; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      width: 100%; max-width: var(--col); margin: 0 auto; padding: 12px 20px 8px;
+    }
+    /* until developer mode is unlocked only the language switch is up here, as dull as the quiz,
+       in the corner of the screen */
+    body:not(.dev):not(.end) #hud { justify-content: flex-end; max-width: none; }
+    body:not(.dev):not(.end) .hud-left, body:not(.dev):not(.end) .hud-btn:not(#hud-lang) { display: none; }
     body:not(.dev):not(.end) #hud-lang {
       box-shadow: none; padding: 6px 12px; font: 13px Arial, Helvetica, sans-serif;
       color: #2c5687; background: #f4f2ec; border: 1px solid #8a94a0; border-radius: 3px;
     }
     #hud-lang .short { display: none; }   /* "EN" instead of "English", where the bar is short of room */
+    .hud-left { display: flex; align-items: center; gap: 26px; }
     .hud-title { font-size: 1.7rem; color: var(--gold); text-shadow: 3px 3px 0 #7a4b00; letter-spacing: .04em; }
+    #hud-logo { font-size: 16px; color: #cbd5e1; }
+    @media (max-width: 760px) { #hud-logo { display: none; } }   /* the buttons need the room; the last screen shows it again */
     .hud-btns { display: flex; gap: 14px; }
     .hud-btn {
       cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
@@ -79,9 +92,14 @@
       flex: 1; width: 100%; max-width: 600px; margin: 0 auto; padding: 18px;
       display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: center;
     }
-    /* pinned to the top, so that nothing shifts when a question grows or shrinks */
-    body.dev #main { max-width: 1180px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; align-content: start; padding-top: 10px; }
-    @media (max-width: 860px) { body.dev #main { grid-template-columns: minmax(0, 1fr); } }
+    /* The quiz next to its code; on a narrow screen above it. Pinned to the top, under the
+       duck, so that nothing shifts when a question grows or shrinks. */
+    body.dev #main { max-width: var(--col); align-content: start; padding-top: 10px; }
+    @media (min-width: 900px) { body.dev #main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+    /* whose quiz this is: under the window until developer mode, in the top bar after that */
+    #brand { justify-self: center; font-size: 19.2px; color: var(--ink); }
+    #brand .real { display: block; height: 46px; image-rendering: auto; }   /* the logo file itself, not pixel art */
+    body.dev #brand { display: none; }
 
     /* ── THE QUIZ ── deliberately the dullest thing on the page */
     .app {
@@ -93,8 +111,11 @@
     .app-bar span { font-weight: normal; letter-spacing: .3em; opacity: .8; }
     .app-sub { display: flex; flex-wrap: wrap; gap: 4px 18px; background: #e4e1d8; border-bottom: 1px solid #c8c4b8; padding: 5px 12px; font-size: 12px; color: #5b6068; }
     #app-q { margin-left: auto; }
-    .app-body { position: relative; flex: 1; min-height: 400px; padding: 24px 24px 76px; overflow: hidden; }
+    .app-body { position: relative; flex: 1; min-height: 400px; padding: 24px; overflow: hidden; }
     .app-body.spill { overflow: visible; }   /* for the progress bar that leaves the window */
+    /* Next to its code, the window gives up some height on a low screen, so that the page fits
+       without scrolling: 277px is everything on the page above and below the inside of the window. */
+    @media (min-width: 900px) { body.dev .app-body { min-height: clamp(370px, 100vh - 277px, 400px); } }
     .app-foot { border-top: 1px solid #dcd8cd; padding: 5px 12px; font-size: 11px; color: #9a968c; }
 
     .start { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding-top: 44px; }
@@ -125,11 +146,12 @@
     .banner.bad { background: #f9dcdc; color: #9b1c1c; border: 1px solid #e0a0a0; }
 
     /* question 1: the button that will not be caught */
+    .app-body.chase { padding-bottom: 76px; }   /* room under the answers for the button */
     #next { position: absolute; right: 24px; bottom: 20px; z-index: 3; transition: left .12s, top .12s, transform .25s, opacity .15s; }
     #next.spin { animation: spin .6s linear; }
     #next.gone { opacity: 0; pointer-events: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .app.glitch { animation: glitch .9s steps(9); }
+    .glitch { animation: glitch .9s steps(9); }
     @keyframes glitch {
       0%, 100% { transform: none; filter: none; clip-path: none; }
       11% { transform: translate(-6px, 3px) skewX(4deg); filter: hue-rotate(90deg) invert(1); }
@@ -231,23 +253,31 @@
     #run:disabled { background: #46516a; color: #8a94ab; box-shadow: none; cursor: default; }
     .code-pane.locked ol.code { pointer-events: none; }
 
-    /* ── THE DUCK ── */
+    /* ── THE DUCK ── above the quiz and its code, as wide as the two together, so that it stays
+       with them on any screen: at the bottom of a large one it would sit far below them.
+       The strip runs the width of the screen; its padding keeps what is in it inside the block. */
     #duckbar {
-      display: none; position: sticky; bottom: 0; z-index: 20; align-items: flex-end; gap: 16px;
-      width: 100%; max-width: 1180px; margin: 0 auto; padding: 18px 20px 18px;
-      background: linear-gradient(rgba(20,18,31,0), var(--night) 40%);
+      order: -1; display: none; position: sticky; top: 0; z-index: 20;
+      grid-template: "duck bubble" auto "hint bubble" 1fr / auto 1fr; gap: 4px 14px; align-items: start;
+      padding: 8px max(14px, (100% - var(--col)) / 2 + 14px) 10px; background: var(--night);
     }
-    body.dev #duckbar { display: flex; }
-    #duck { flex: none; background: none; border: 0; padding: 0; cursor: pointer; }
-    #duck img { display: block; width: 84px; }
+    body.dev #duckbar { display: grid; }
+    #duck { grid-area: duck; justify-self: center; background: none; border: 0; padding: 0; cursor: pointer; }
+    #duck img { display: block; width: 56px; }
     #duck.squeak img { animation: squeak .25s steps(3); }
     @keyframes squeak { 50% { transform: scale(1.2, .7) translateY(14px); } }
-    #bubble { flex: 1; min-height: 62px; margin-bottom: 6px; padding: 11px 16px; background: #fffbe6; color: var(--ink); font-size: 1.1rem; line-height: 1.12; }
+    #bubble { grid-area: bubble; min-height: 62px; margin: 4px 4px 4px 0; padding: 11px 16px; background: #fffbe6; color: var(--ink); font-size: 1rem; line-height: 1.12; }
     #bubble.pop { animation: pop .25s steps(4); }
     @keyframes pop { 0% { transform: translateY(6px) scale(.97); } }
-    #hint { flex: none; margin-bottom: 6px; white-space: nowrap; }
+    #hint { grid-area: hint; margin: 0 0 4px 4px; padding: 6px 8px; font-size: .85rem; white-space: nowrap; }
     #hint.nudge { animation: nudge 1s steps(4) infinite; }
     @keyframes nudge { 50% { transform: translateY(-5px); filter: brightness(1.5); } }
+    /* with room to spare the hint button sits at the end of the bubble, and the strip is one row high */
+    @media (min-width: 900px) {
+      #duckbar { grid-template: "duck bubble hint" auto / auto 1fr auto; align-items: center; }
+      #bubble { min-height: 70px; }   /* two lines */
+      #hint { margin: 0 4px 0 0; }
+    }
 
     /* ── OVERLAYS ── */
     .overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(8,6,18,.88); }
@@ -300,7 +330,7 @@
     @keyframes flash { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
 
     #toast {
-      position: fixed; top: 76px; left: 50%; z-index: 75; display: flex; align-items: center; gap: 14px;
+      position: fixed; top: 12px; left: 50%; z-index: 75; display: flex; align-items: center; gap: 14px;
       width: max-content; max-width: calc(100vw - 40px); padding: 10px 18px; background: #3b2a6b; color: #fff;
       transform: translate(-50%, -30px); opacity: 0; pointer-events: none; transition: transform .25s steps(4), opacity .25s steps(4);
     }
@@ -312,7 +342,7 @@
     #staff button { font: inherit; padding: 3px 8px; }
 
     /* ── THE LAST SCREEN ── */
-    #end { display: none; flex-direction: column; gap: 26px; width: 100%; max-width: 780px; margin: 0 auto; padding: 14px 22px 48px; }
+    #end { display: none; flex-direction: column; gap: 26px; width: 100%; max-width: var(--col); margin: 0 auto; padding: 14px 22px 48px; }
     body.end #end { display: flex; }
     body.end #main, body.end #duckbar { display: none; }
     .box { background: var(--panel); padding: 22px; }
@@ -333,32 +363,18 @@
     pre.real { margin-bottom: 12px; padding: 14px; overflow: auto; background: #12141c; color: #d6deeb; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
     .cta { font-size: 1.3rem; line-height: 1.15; text-align: center; color: #fff; }
     .cta b { display: block; font-weight: normal; color: var(--gold); }
-
-    /* One column: the quiz above its code. The duck moves to the top and stays in view there,
-       because at the bottom it would sit on the code. */
-    @media (max-width: 860px) {
-      #hud { order: -2; }
-      #duckbar {
-        order: -1; top: 0; bottom: auto; padding: 8px 14px 10px; background: var(--night);
-        grid-template: "duck bubble" auto "hint bubble" 1fr / auto 1fr; gap: 4px 14px; align-items: start;
-      }
-      body.dev #duckbar { display: grid; }
-      #duck { grid-area: duck; justify-self: center; }
-      #duck img { width: 56px; }
-      #bubble { grid-area: bubble; margin: 4px 4px 4px 0; font-size: 1rem; }
-      #hint { grid-area: hint; margin: 0 0 4px 4px; padding: 6px 8px; font-size: .85rem; }
-      #toast { top: 12px; }
-    }
+    .cta .logo { margin: 22px 0 6px; font-size: 25.6px; text-align: left; }
 
     @media (max-width: 560px) {
       html { font-size: 18px; }
-      .hud-title { display: none; }
+      .hud-left { display: none; }
       .hud-btns { width: 100%; justify-content: space-between; gap: 8px; }
       .hud-btn { padding: 6px 9px; font-size: 1rem; }
       body:not(.dev):not(.end) .hud-btns { justify-content: flex-end; }
       body.dev #hud-lang .long, body.end #hud-lang .long { display: none; }
       body.dev #hud-lang .short, body.end #hud-lang .short { display: inline; }
-      .app-body { min-height: 340px; padding: 18px 16px 70px; }
+      .app-body { min-height: 340px; padding: 18px 16px; }
+      .app-body.chase { padding-bottom: 70px; }
       .code-pane { font-size: 13px; }
       .lic-head img { width: 70px; }
     }
@@ -368,7 +384,10 @@
 
 <!-- HUD: appears once developer mode is unlocked; until then it only shows the language switch -->
 <div id="hud">
-  <div class="hud-title" data-t="hud.title"></div>
+  <div class="hud-left">
+    <div class="hud-title" data-t="hud.title"></div>
+    <div id="hud-logo"></div>
+  </div>
   <div class="hud-btns">
     <button class="hud-btn" id="hud-lang"></button>
     <button class="hud-btn" id="hud-card" data-t="hud.card" data-tip="hud.cardTip"></button>
@@ -397,6 +416,8 @@
     <ol class="code" id="code"></ol>
     <div class="code-foot"><button id="run" data-t="code.run"></button></div>
   </section>
+
+  <div id="brand"></div>
 </main>
 
 <div id="duckbar">
@@ -674,8 +695,15 @@ function bump(el) {
   el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
 }
 
+// The logo under the quiz window. While the quiz still looks normal so does the logo: it is the
+// organisation's own file. Once things break it is made of pixels, as it is behind the scenes.
+function showBrand(pixels) {
+  $('#brand').innerHTML = pixels || !SETTINGS.logoImage ? Card.logo()
+    : `<img class="real" src="${SETTINGS.logoImage}" alt="${esc(SETTINGS.organisation)}">`;
+}
+
 // ── the duck ──
-// What the duck says in its speech bubble at the bottom. It never blocks the game.
+// What the duck says in its speech bubble above the quiz. It never blocks the game.
 function quack(text) {
   const b = $('#bubble');
   b.textContent = text;
@@ -909,6 +937,14 @@ $('#code').addEventListener('input', e => {
   if (e.target.classList.contains('num')) e.target.value = e.target.value.replace(/\D/g, '');
   if (Code.change) Code.change(slot, e.target.value);
 });
+// A number box that gets the focus has its number selected, so that what is typed replaces it.
+// Typed next to the number that was there, "00" makes 100 or 001, depending on where the click landed.
+$('#code').addEventListener('focusin', e => {
+  const box = e.target;
+  if (!box.classList.contains('num')) return;
+  box.select();
+  setTimeout(() => document.activeElement === box && box.setSelectionRange(0, box.value.length));   // a tap places the cursor after the focus
+});
 $('#code').addEventListener('click', e => {
   const b = e.target.closest('[data-by]');
   if ($('#code-pane').classList.contains('locked')) return;   // CSS keeps the mouse out while a program runs; this stops the keyboard
@@ -936,6 +972,7 @@ function go(id) {
   setHints([]);
   updateHud();
   if ($('#staff-at')) $('#staff-at').textContent = id;
+  showBrand(false);
   STAGES[id].enter();
   scrollTo(0, 0);
 }
@@ -968,6 +1005,7 @@ STAGES.runaway = {
       ${L.q1.answers.map(a => `<button class="ans">${a}</button>`).join('')}
       <button class="app-btn perch" id="next" ${dev ? '' : 'hidden'}>${L.q1.next} ➜</button>`);
     const arena = $('#app-body'), next = $('#next');
+    arena.classList.add('chase');
     let mode = 'jump', near = false, dodges = 0, size = 1;   // mode: one of T.modes
     perch(next, 'runaway');
 
@@ -1029,8 +1067,9 @@ STAGES.runaway = {
 
     function breakTheQuiz() {
       $('#app').classList.add('glitch'); SFX.glitch();
+      showBrand(true); $('#brand').classList.add('glitch');   // the logo breaks along with the quiz
       after(950, () => {
-        $('#app').classList.remove('glitch');
+        $('#app').classList.remove('glitch'); $('#brand').classList.remove('glitch');
         say(T.say1, T.who, () => say(T.say2, T.yes, askForCard, T.no, $('#unlock-none').onclick));
       });
     }
@@ -1281,8 +1320,16 @@ STAGES.clicker = {
       showCount(); Code.flash('when'); Code.flash('add'); SFX.tick();
       if (clicks >= 100) return finish();
       if (byHand === 8 && !offered) offerLoop();
+      if (mine && !offered) standby();
     }
     btn.onclick = () => press(true);
+
+    // Those who refuse to start clicking, or give up before the eighth click, get the loop as
+    // well: once nobody has clicked for a while. Whoever is still clicking is left alone.
+    function standby() {
+      const at = byHand;
+      after(15000, () => { if (byHand === at && !offered && !done) offerLoop(); });
+    }
 
     // After a few clicks by hand, the duck adds two lines that can do the clicking.
     function offerLoop() {
@@ -1347,7 +1394,7 @@ STAGES.clicker = {
     }
 
     quack(T.intro);
-    after(15000, () => { if (!offered && !done) offerLoop(); });   // for those who refuse to start clicking
+    standby();
   },
 };
 
@@ -1555,7 +1602,8 @@ ${c('kw', 'for')} letter ${c('kw', 'in')} ${P.message}:
     <div class="cta">
       ${invitation ? `<p>${invitation}</p>` : ''}
       ${prize ? `<b>${prize}</b>` : ''}
-      <b>${[SETTINGS.organisation, SETTINGS.link].filter(Boolean).join(' · ')}</b>
+      ${Card.logo(true)}
+      <b>${SETTINGS.link}</b>
     </div>
     <div class="btn-row"><button class="btn" id="end-again">${T.next}</button></div>`;
   $('#end-jar').onclick = openJar;
@@ -1604,6 +1652,7 @@ $$('.say-duck').forEach(img => img.src = Card.DUCK);
 $('#duck img').src = Card.DUCK;
 $('#hud-jar-img').src = sprite('runaway');
 $('#hud-power-img').src = Card.POWER;
+$('#hud-logo').innerHTML = Card.logo(true);
 labels();
 go(STAGES[S.stage] ? S.stage : 'start');
 </script>

@@ -36,18 +36,18 @@ const TEXT = {
     hud: { title: 'Bugjacht', card: 'Kaart', cardTip: 'Je kaart', sound: 'Geluid', soundTip: 'Geluid aan / uit', jarTip: 'De bugs die je hebt gevangen', power: 'Aan / uit' },
     app: { player: 'Speler:', score: 'Score:', foot: 'QuizMaster 3000 · versie 0.4 (niet af)' },
     code: { behind: 'de code achter het scherm', run: '▶ Uitvoeren', up: 'Omhoog', down: 'Omlaag' },
-    duck: { name: 'De eend', tip: 'De badeend van de programmeur' },
+    duck: { name: 'De eend', tip: 'De badeend van de developer' },
     hint: { first: 'Hint', n: (i, of) => `Hint ${i} van ${of}`, again: 'Zeg dat nog eens' },
     unlock: {
       ask: 'Typ de kaartcode. Vier tekens, op de voorkant.',
       ok: 'Ontgrendel', none: 'Ik heb geen kaart', got: 'Begrepen',
       unknown: 'Die kaart ken ik niet. Kijk nog eens naar de vier tekens onder “kaartcode”.',
       borrow: 'Geen kaart? Leen de mijne maar. Je hebt hem straks weer nodig: hij blijft bovenaan onder de knop Kaart staan.',
-      flash: 'Programmeursmodus ontgrendeld',
+      flash: 'Developermodus ontgrendeld',
     },
     caught: {
       tag: (n, of) => `Bug gevangen · ${n} van ${of}`, repeat: 'Opnieuw gevangen',
-      call: idea => `Programmeurs noemen dit <b>${idea}</b>`,
+      call: idea => `Developers noemen dit <b>${idea}</b>`,
       next: 'Verder', back: 'Terug naar de pot', again: 'Speel deze opnieuw',
     },
     secret: { tag: 'Geheime bug', caught: name => `Geheime bug gevangen: ${name}`, more: 'Kijk in de pot om er meer over te lezen.' },
@@ -61,10 +61,10 @@ const TEXT = {
     // for whoever opens the browser's own developer tools
     console: {
       hello: 'Kwak.',
-      note: 'Je hebt de echte ontwikkelaarstools geopend: hier zoeken echte programmeurs naar echte bugs.\nTyp eend() en druk op Enter.',
+      note: 'Je hebt de echte ontwikkelaarstools geopend: hier zoeken echte developers naar echte bugs.\nTyp eend() en druk op Enter.',
       done: 'Kwak. Geheime bug gevangen.',
     },
-    chat: { title: 'QuizMaster 3000 · teamchat', ok: 'Verder', dev: 'programmeur', duck: 'eend' },
+    chat: { title: 'QuizMaster 3000 · teamchat', ok: 'Verder', dev: 'developer', duck: 'eend' },
     idle: { title: 'Ben je er nog?', text: n => `Het spel begint opnieuw voor de volgende speler over ${n}…`, ok: 'Ik ben er nog' },
     staff: 'Nieuwe speler',
 
@@ -81,25 +81,25 @@ const TEXT = {
       yesbug: { name: 'De Jaknikker', idea: 'een voorwaarde', word: 'voorwaarde',
         text: '“Als dit zo is, doe dan dat. Anders doe je iets anders.” Zo neemt een programma een beslissing. Elke keer dat je “verkeerd wachtwoord” te zien kreeg, kwam dat door zo’n regel.' },
       clicker: { name: 'De Vingerbreker', idea: 'een loop', word: 'loop',
-        text: 'Zeg tegen een computer dat hij iets moet herhalen en hij doet het: honderd keer of een miljard keer, zonder zich te vervelen, zonder moe te worden. Wordt een klus saai, dan gaat een programmeur op zoek naar de loop.' },
+        text: 'Zeg tegen een computer dat hij iets moet herhalen en hij doet het: honderd keer of een miljard keer, zonder zich te vervelen, zonder moe te worden. Wordt een klus saai, dan gaat een developer op zoek naar de loop.' },
       cipher: { name: 'De Wartaal', idea: 'een algoritme', word: 'algoritme',
         text: 'Je nam iets wat je met de hand kon doen en schreef het op als stappen die een computer kan volgen. Dat recept ontcijfert nu elk bericht, met elke sleutel, in een oogwenk. Dat is de hele truc.' },
 
       // the secret ones
       duck: { name: 'De Pieper',
-        text: 'Programmeurs hebben echt een badeend op hun bureau staan. Leg je probleem hardop uit aan de eend, en vaak hoor je het antwoord zelf al. Dat heet rubber duck debugging.' },
+        text: 'Developers hebben echt een badeend op hun bureau staan. Leg je probleem hardop uit aan de eend, en vaak hoor je het antwoord zelf al. Dat heet rubber duck debugging.' },
       cheater: { name: 'De Valsspeler',
         text: 'Je veranderde een getal waar niemand om had gevraagd, gewoon om te kijken wat er zou gebeuren. De helft van programmeren is precies dat.' },
       reboot: { name: 'Uit En Weer Aan',
         text: 'De oudste oplossing die er is. Het werkt omdat opnieuw opstarten de warboel wegveegt waar het programma zichzelf in had gewerkt.' },
       offbyone: { name: 'Eentje Ernaast',
-        text: '99 in plaats van 100. Er eentje naast zitten, eentje te weinig of eentje te veel, overkomt programmeurs zo vaak dat het een naam heeft: een off-by-one-fout.' },
+        text: '99 in plaats van 100. Er eentje naast zitten, eentje te weinig of eentje te veel, overkomt developers zo vaak dat het een naam heeft: een off-by-one-fout.' },
       overflow: { name: 'De Overflow',
         text: 'Je goot veel te veel kliks in een balk die voor honderd was gebouwd. Als een getal te groot wordt voor de ruimte die een programma ervoor heeft, gaat er iets stuk. In 1996 ging zo een gloednieuwe raket verloren.' },
       inspector: { name: 'De Inspecteur',
-        text: 'Je hebt de echte ontwikkelaarstools geopend. Elke browser heeft ze, voor elke webpagina, en hier jagen echte programmeurs op echte bugs.' },
+        text: 'Je hebt de echte ontwikkelaarstools geopend. Elke browser heeft ze, voor elke webpagina, en hier jagen echte developers op echte bugs.' },
       hardway: { name: 'De Doorzetter',
-        text: 'Honderd kliks, met de hand. Een loop doet dat sneller dan jij met je ogen kunt knipperen, maar weigeren om op te geven is ook een programmeursvaardigheid.' },
+        text: 'Honderd kliks, met de hand. Een loop doet dat sneller dan jij met je ogen kunt knipperen, maar weigeren om op te geven is ook iets wat een developer moet kunnen.' },
     },
 
     // The duck's hints: three per bug, from vague to literal.
@@ -125,7 +125,7 @@ const TEXT = {
         'Zet het gele vakje op regel 4 op Python, druk op Uitvoeren en klik een antwoord aan.',
       ],
       clicker: [
-        'Programmeurs zijn lui op de best mogelijke manier: ze doen nooit honderd keer hetzelfde met de hand.',
+        'Developers zijn lui op de best mogelijke manier: ze doen nooit honderd keer hetzelfde met de hand.',
         'Regel 7 en 8 kunnen voor jou op de knop drukken. Hoe vaak, dat bepaalt het gele vakje.',
         'Typ 100 in het gele vakje op regel 7 en druk op Uitvoeren.',
       ],
@@ -155,9 +155,9 @@ const TEXT = {
       next: 'Volgende',
     },
     runaway: {
-      say1: 'Kwak. Die knop blijft nooit stilstaan. Het ligt niet aan jou: het is een bug. Deze quiz zit er vol mee. De programmeur is gaan lunchen voordat de quiz af was.',
+      say1: 'Kwak. Die knop blijft nooit stilstaan. Het ligt niet aan jou: het is een bug. Deze quiz zit er vol mee. De developer is gaan lunchen voordat de quiz af was.',
       who: 'Wie zei dat?',
-      say2: 'Hier beneden. Ik ben de badeend van de programmeur. Ik weet waar de bugs zitten, maar ik heb geen handen. Jij wel. Heb je een kaart gekregen?',
+      say2: 'Ik ben de badeend van de developer. Ik weet waar de bugs zitten, maar ik heb geen handen. Jij wel. Heb je een kaart gekregen?',
       yes: 'Ja, ik heb een kaart', no: 'Geen kaart',
       intro: 'Dit is de code: de instructies die dit scherm volgt. Een regel licht op als hij wordt uitgevoerd. Toe maar, jaag nog eens op die knop en kijk wat er gebeurt.',
       see: 'Zie je regel 2 oplichten, elke keer dat hij ontsnapt? Het gele vakje op die regel kun je veranderen.',
@@ -238,7 +238,7 @@ const TEXT = {
       sub: 'Klik 100 keer op de knop.',
       button: 'Klik',
       intro: 'Honderd kliks. Nou, succes ermee.',
-      offer: left => `Nog ${left} te gaan. Je kunt blijven klikken… of doen wat programmeurs doen als een klus saai is: de computer het laten doen. Ik heb onderaan twee regels toegevoegd.`,
+      offer: left => `Nog ${left} te gaan. Je kunt blijven klikken… of doen wat developers doen als een klus saai is: de computer het laten doen. Ik heb onderaan twee regels toegevoegd.`,
       zero: 'Herhaal 0 keer. Klaar! Er gebeurde niets, precies zoals opgedragen.',
       ninetynine: '99. Net niet. Er eentje naast zitten is een van de beroemdste fouten in het programmeren. Nog één klik en je bent er.',
       sofar: (clicks, n) => `Tot nu toe ${clicks}. De loop deed precies ${n} klik${n === 1 ? '' : 's'}, zoals opgedragen. Hoeveel heb je er nodig?`,
@@ -261,16 +261,16 @@ const TEXT = {
     // ── bug 6: the scrambled question ── its first word is the one decoded by hand
     cipher: {
       question: 'VRAAG VIER: WIE HEEFT DEZE QUIZ GEREPAREERD?',
-      answers: ['DE PROGRAMMEUR', 'DE EEND'],   // the third answer is the player's own name…
+      answers: ['DE DEVELOPER', 'DE EEND'],   // the third answer is the player's own name…
       me: 'ik',                                 // …or this, for a player without one
       take: 'Pak je kaart. Zoek elke letter op in een donkere rij: de echte letter staat er recht onder.',
-      intro: 'De laatste! Oei. De programmeur heeft hem versleuteld zodat niemand kon spieken: elke letter is een paar plaatsen opgeschoven in het alfabet. Op je kaart staat een decodeerstrook. Probeer het eerste woord.',
+      intro: 'De laatste! Oei. De developer heeft hem versleuteld zodat niemand kon spieken: elke letter is een paar plaatsen opgeschoven in het alfabet. Op je kaart staat een decodeerstrook. Probeer het eerste woord.',
       written: left => `Eén woord, en dat duurde even. Nog ${left} letters te gaan… verveel je je al? Mooi. Uit verveling worden programma’s geboren. Ik heb opgeschreven wat je net deed, als code.`,
       oneWrong: k => `Hij deed het! Hij pakte de eerste letter en schoof die ${k} plaats${k === 1 ? '' : 'en'} terug. Is ${k} de SLEUTEL op je kaart?`,
       oneRight: 'Eén letter, en hij klopt. Laat hem nu elke letter doen.',
       nonsense: 'De loop werkt: kijk hem eens gaan. Maar het resultaat is nog steeds onzin. Is de sleutel het getal op je kaart?',
       solved: 'Daar staat hij. Toe maar, geef antwoord.',
-      developer: 'De programmeur zat de hele tijd een broodje te eten.',
+      developer: 'De developer zat de hele tijd een broodje te eten.',
       duck: 'Gevleid. Maar ik heb geen handen, weet je nog?',
       file: 'decoder.code',
       code: {
@@ -286,7 +286,7 @@ const TEXT = {
     // ── the end ──
     // The developer comes back: who speaks ('' for nobody, 'dev' or 'duck') and what they say.
     finale: (name, bugs, time) => [
-      ['', 'De programmeur is terug van de lunch.'],
+      ['', 'De developer is terug van de lunch.'],
       ['dev', 'Sorry! Lange rij bij de broodjes. Zo, tijd om die quiz te repar'],
       ['dev', '…waarom werkt alles?'],
       ['dev', `Wie heeft er ${bugs} bugs opgelost${time ? ' in ' + time : ''}?!`],
@@ -302,7 +302,7 @@ const TEXT = {
       score: (score, cheated) => `score ${score}${cheated ? ' (we weten wat je gedaan hebt)' : ''}`,
       names: 'Alles wat je net deed heeft een naam',
       own: 'Je eigen bug',
-      ownText: borrowed => `Elke programmeur krijgt vroeg of laat een eigen bug. Deze komt uit jouw kaart: geen enkele andere kaart levert dezelfde op.
+      ownText: borrowed => `Elke developer krijgt vroeg of laat een eigen bug. Deze komt uit jouw kaart: geen enkele andere kaart levert dezelfde op.
         Nu ben <b>jij</b> de computer. ${borrowed ? 'Vraag een kaart bij de stand, draai hem om' : 'Draai je kaart om'} en voer dit programma uit met een pen:
         1 betekent het vakje inkleuren, 0 betekent leeg laten.`,
       secrets: (n, of) => `Geheime bugs · ${n} van ${of}`,
@@ -318,7 +318,7 @@ const TEXT = {
     // ── the paper cards ──
     // One rumor per card, each pointing at a secret bug, in the same order in every language.
     card: {
-      title: 'Programmeurspas', under: 'opent de code achter het scherm', code: 'kaartcode', key: 'sleutel',
+      title: 'Developerpas', under: 'opent de code achter het scherm', code: 'kaartcode', key: 'sleutel',
       how: '<b>Decodeerstrook.</b> Zoek de versleutelde letter in een donkere rij. De echte staat er recht onder.',
       rumor: 'Gerucht: ', number: 'Nr. ',
       license: 'Bugjagersdiploma', issuer: 'uitgereikt door een badeend', name: 'Naam',
@@ -330,7 +330,7 @@ const TEXT = {
         'de aan-uitknop doet het nog.',
         '99 is een ongeluksgetal.',
         'sommige getallen zijn te groot voor hun balk.',
-        'echte programmeurs drukken op F12.',
+        'echte developers drukken op F12.',
         'echte helden klikken elke klik zelf.',
       ],
     },
@@ -480,7 +480,7 @@ const TEXT = {
     runaway: {
       say1: 'Quack. That button is never going to hold still. It is not you: it is a bug. This quiz is crawling with them. The developer went to lunch before it was finished.',
       who: 'Who said that?',
-      say2: 'Down here. I am the developer’s rubber duck. I know where the bugs are, but I have no hands. You do. Did they give you a keycard?',
+      say2: 'I am the developer’s rubber duck. I know where the bugs are, but I have no hands. You do. Did they give you a keycard?',
       yes: 'Yes, I have a card', no: 'No card',
       intro: 'This is the code: the instructions this screen is following. A line lights up when it runs. Go on, chase that button again and watch.',
       see: 'See line 2 light up every time it gets away? The yellow box on that line can be changed.',

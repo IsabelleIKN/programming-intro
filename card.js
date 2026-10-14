@@ -123,6 +123,33 @@ const Card = (() => {
     '..lllll..',
   ], 3);
 
+  // ── the logo ──
+  // The school's mark, a square with round corners, redrawn on a grid of 16 × 16. The name
+  // goes next to it the way the real logo has it: one word per line, as tall as the mark.
+  const MARK = [
+    '....########....',
+    '..############..',
+    '.###........###.',
+    '.##..........##.',
+    '##............##',
+    '##............##',
+    '##............##',
+    '##............##',
+    '##............##',
+    '##............##',
+    '##............##',
+    '##............##',
+    '.##..........##.',
+    '.###........###.',
+    '..############..',
+    '....########....',
+  ];
+  const mark = { dark: picture(MARK.map(row => row.replace(/#/g, 'k'))), light: picture(MARK.map(row => row.replace(/#/g, 'w'))) };
+  // `light` is for dark backgrounds. Without an organisation in settings.js there is no logo.
+  const logo = (light = false) => SETTINGS.organisation
+    ? `<span class="logo"><img src="${light ? mark.light : mark.dark}" alt=""><strong>${SETTINGS.organisation.trim().split(/\s+/).join('<br>')}</strong></span>`
+    : '';
+
   // ── the card itself ──
   // The words on a card are in text.js (L.card), in the language in use. There is one rumor
   // per card and each points at a secret bug. They are dealt in turn through the deck, so any
@@ -141,14 +168,14 @@ const Card = (() => {
   function front(n, number = 0) {
     const k = key(n), w = L.card;
     return `<div class="keycard">
-      <div class="kc-head"><img src="${DUCK}" alt=""><div><b>${w.title}</b><span>${w.under}</span></div></div>
+      <div class="kc-head"><img src="${DUCK}" alt=""><div><b>${w.title}</b><span>${w.under}</span></div><i>${number ? w.number + number : ''}</i></div>
       <div class="kc-pair">
         <div class="kc-box"><span>${w.code}</span><b>${code(n)}</b></div>
         <div class="kc-box kc-key"><span>${w.key}</span><b>${k}</b></div>
       </div>
       <div class="kc-how">${w.how}</div>
       ${strip(ABC.slice(0, 13), k)}${strip(ABC.slice(13), k)}
-      <div class="kc-foot"><span>${w.rumor}${rumor(n)}</span><i>${number ? w.number + number : ''}</i></div>
+      <div class="kc-foot"><span class="kc-rumor">${w.rumor}${rumor(n)}</span>${logo()}</div>
     </div>`;
   }
 
@@ -156,11 +183,11 @@ const Card = (() => {
   function back() {
     const row = `<tr>${'<td></td>'.repeat(5)}</tr>`, w = L.card;
     return `<div class="keycard kc-back">
-      <div class="kc-head"><div><b>${w.license}</b><span>${SETTINGS.organisation || w.issuer}</span></div></div>
+      <div class="kc-head"><div><b>${w.license}</b><span>${w.issuer}</span></div></div>
       <div class="kc-name">${w.name}</div>
       <div class="kc-bug"><table>${row.repeat(5)}</table><span>${w.bug}</span></div>
       <div class="kc-words"><span>${w.ask}</span>${w.ideas}</div>
-      <div class="kc-foot"><span>${local(SETTINGS.invitation)}</span><i>${SETTINGS.link}</i></div>
+      <div class="kc-foot kc-from">${logo()}<div class="kc-invite"><span>${local(SETTINGS.invitation)}</span><i>${SETTINGS.link}</i></div></div>
     </div>`;
   }
 
@@ -172,33 +199,44 @@ const Card = (() => {
       display: flex; flex-direction: column; gap: 1.1em; text-align: left; overflow: hidden;
     }
     .keycard, .keycard * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .kc-head { display: flex; align-items: center; gap: 1.2em; background: #1a1420; margin: -1.5em -1.5em 0; padding: 1em 1.5em; }
+    .kc-head { position: relative; display: flex; align-items: center; gap: 1.2em; background: #1a1420; margin: -1.5em -1.5em 0; padding: 1em 1.5em; }
     .kc-head img { width: 5.5em; image-rendering: pixelated; }
     .kc-head b { display: block; font-size: 2.7em; font-weight: normal; color: #ffd23f; text-transform: uppercase; letter-spacing: .04em; }
     .kc-head span { display: block; font-size: 1.5em; color: #cbd5e1; }
+    .kc-head i { position: absolute; top: .3em; right: 1.3em; font-size: 1.1em; font-style: normal; color: #8b8594; }
     .kc-pair { display: flex; gap: 1em; }
     .kc-box { flex: 1; border: .3em solid #1a1420; padding: .6em .9em .3em; display: flex; flex-direction: column; }
     .kc-key { flex: 0 0 9em; background: #ffd23f; }
     .kc-box span { font-size: 1.5em; text-transform: uppercase; letter-spacing: .08em; }
-    .kc-box b { font-size: 6em; font-weight: normal; letter-spacing: .08em; }
+    .kc-box b { font-size: 5.4em; font-weight: normal; letter-spacing: .08em; }
     .kc-how { font-size: 1.6em; line-height: 1.05; }
     .kc-how b { font-weight: normal; text-transform: uppercase; }
     .kc-strip { border-collapse: collapse; width: 100%; table-layout: fixed; }
-    .kc-strip td { font: bold 2.15em/1.65 ui-monospace, Menlo, Consolas, monospace; text-align: center; border: .08em solid #1a1420; padding: 0; }
+    .kc-strip td { font: bold 2.15em/1.52 ui-monospace, Menlo, Consolas, monospace; text-align: center; border: .08em solid #1a1420; padding: 0; }
     .kc-dark td { background: #1a1420; color: #fff; }
-    .kc-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 1em; }
-    .kc-foot span { font-size: 1.5em; line-height: 1.05; }
-    .kc-foot i { font-size: 1.3em; font-style: normal; color: #8b8594; white-space: nowrap; }
+    .kc-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 1.2em; }
+    .kc-rumor { font-size: 1.5em; line-height: 1.05; }
+    .kc-foot .logo { font-size: 1.4em; flex: none; }
 
     .kc-back .kc-head { padding: 1.3em 1.5em; }
     .kc-name { font-size: 1.5em; text-transform: uppercase; letter-spacing: .08em; border-bottom: .14em solid #1a1420; padding: 1.2em 0 .3em; }
     .kc-bug { display: flex; align-items: center; gap: 1.4em; }
     .kc-bug table { border-collapse: collapse; flex: none; }
-    .kc-bug td { width: 3.7em; height: 3.7em; border: .14em solid #1a1420; padding: 0; }
+    .kc-bug td { width: 3.25em; height: 3.25em; border: .14em solid #1a1420; padding: 0; }
     .kc-bug span { font-size: 1.5em; line-height: 1.05; }
     .kc-words { font-size: 1.6em; line-height: 1.1; text-transform: uppercase; letter-spacing: .04em; }
     .kc-words span { display: block; text-transform: none; letter-spacing: 0; color: #5b5566; }
+    .kc-from { align-items: center; justify-content: flex-start; }
+    .kc-from .logo { font-size: 1.5em; }
+    .kc-invite span { display: block; font-size: 1.4em; line-height: 1.05; }
+    .kc-invite i { display: block; margin-top: .3em; font-size: 1.4em; font-style: normal; }
+    .kc-invite i:empty { display: none; }
+
+    /* The logo is as big as its font-size says, like the card: the mark is three lines of text tall. */
+    .logo { display: inline-flex; align-items: center; gap: .6em; font-family: 'Jersey 10', Arial, sans-serif; }
+    .logo img { width: 2.5em; height: 2.5em; flex: none; image-rendering: pixelated; }
+    .logo strong { font-weight: normal; line-height: .83; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
   </style>`);
 
-  return { ABC, DECK, RESERVED, DUCK, POWER, code, read, key, shift, grid, bug, picture, front, back };
+  return { ABC, DECK, RESERVED, DUCK, POWER, code, read, key, shift, grid, bug, picture, logo, front, back };
 })();

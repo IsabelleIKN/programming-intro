@@ -2,13 +2,13 @@
 
 A 10-minute introduction to programming for people who have never written code, made for open days, PR events and school visits.
 
-It looks like a dull quiz. One question in, the Next button starts running away, and the developer's rubber duck explains that the quiz is full of bugs and the developer has gone to lunch. The player types the code from a paper **keycard**, which unlocks "developer mode": the code behind the screen appears next to the quiz. From there they fix six bugs by reading that code and changing it. Nobody types real syntax; the code is plain sentences with yellow boxes that can be changed.
+It looks like a dull quiz. One question in, the Next button starts running away, and the developer's rubber duck explains that the quiz is full of bugs and the developer has gone to lunch. The player types the code from a paper **keycard**, which unlocks "developer mode": the code behind the screen appears under the quiz. From there they fix six bugs by reading that code and changing it. Nobody types real syntax; the code is plain sentences with yellow boxes that can be changed.
 
 ## Running it
 
 Open `index.html` in a browser. There is nothing to install and it needs no internet connection, so it also works from a USB stick. To put it online, copy the whole folder to any web host.
 
-It works on a laptop, a tablet or a phone. A laptop or a tablet in landscape is best: the quiz and its code fit side by side.
+It is made for a laptop, an iMac or a monitor. The quiz and its code sit side by side under the duck, and the whole game fits on the screen without scrolling when the browser window is about 650 pixels high or more; only the first half of the last bug needs some 75 pixels extra. On a very large screen the game stays its own size at the top: zoom the browser in (Ctrl or Cmd with +) until it fills the screen. In a window narrower than 900 pixels, such as a tablet held upright or a phone, the code moves under the quiz and the player scrolls down to it.
 
 ## Languages
 
@@ -69,7 +69,7 @@ Nobody has to find these. They reward poking at things the quiz never asked abou
 
 ## Changing things
 
-- `settings.js`: the starting language, the organisation's name and web address, the invitation and an optional prize line (each in both languages), the idle time, sound.
+- `settings.js`: the starting language, the organisation, a web address, the invitation and an optional prize line (each in both languages), the idle time, sound. The organisation's name is shown as the logo: the square mark with the name next to it, one word per line. It appears in the top bar, on the last screen and on both sides of the cards. The mark itself is drawn in `card.js` (`MARK`). Under the quiz window, for as long as the quiz still looks normal, the game shows the real logo file instead (`logoImage`, now `art/logo.png`); it turns into the pixel version the moment the quiz breaks.
 - `text.js`: every word of the game and of the cards, one block per language. Change wording here. For a third language, copy a block and translate it; the switch then steps through all of them. The notes at the top of the file say what to leave untouched.
 - `index.html`: how the game works. Each stage has its own block under `STAGES`.
 - `card.js`: how card codes, keys and bugs are derived from a card's number, and what the cards look like. Changing the numbers at the top makes cards that are already printed stop working.
