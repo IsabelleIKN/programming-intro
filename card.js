@@ -51,7 +51,8 @@ const Card = (() => {
   const nice = n => ones(n) >= 6 && ones(n) <= 9 && ones(n >> 3 & 7) >= 2 && (n >> 6 & 7) > 0;
 
   // The bugs that live in the game itself. Their numbers are kept out of the deck.
-  const RESERVED = [1790, 2526, 3455, 1463, 2941, 3003, 1723, 2779, 1502, 3549, 2493, 3290, 1978];
+  // (2047 is a solid block on two feet. It was never in the deck: too heavy to pass as `nice`.)
+  const RESERVED = [1790, 2526, 3455, 1463, 2941, 2047, 3003, 1723, 2779, 1502, 3549, 2493, 3290, 1978];
 
   // Every card that may be printed, in an order that is random but the same every time.
   const DECK = (() => {

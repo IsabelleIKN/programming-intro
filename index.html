@@ -172,6 +172,22 @@
     .meter i { display: block; height: 100%; width: 0; background: #3f74ad; }
     .spill .meter i { background: #d9342b; }
 
+    /* loading question 4: a duck that runs, and the bugs in its way */
+    .track { position: relative; height: 98px; overflow: hidden; background: #fff; border: 1px solid #a8a8a8; }
+    .track::after {   /* the ground, which moves along under the duck */
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+      background: linear-gradient(90deg, #8a94a0 14px, transparent 14px) var(--at, 0px) 0 / 24px 3px repeat-x;
+    }
+    .runner { position: absolute; left: 34px; bottom: 3px; width: 40px; transform-origin: bottom; }
+    .runner img { display: block; width: 100%; }
+    .track.on .runner img { animation: trot .24s steps(2) infinite; }
+    @keyframes trot { 50% { transform: translateY(-3px); } }
+    .track.hit .runner img { transform: rotate(24deg); filter: grayscale(.6); }   /* flat on its beak */
+    .block { position: absolute; bottom: 3px; width: 24px; margin-left: -12px; animation: wiggle .5s steps(2) infinite; }
+    .block.air { bottom: 24px; }   /* at the height of the duck's head: over it when it ducks */
+    .loading { margin: 14px 0 0; }
+    .loading .q-sub { margin: 0; }
+
     /* question 4: the scrambled one */
     .tiles { display: flex; flex-wrap: wrap; gap: 6px 14px; }
     .tiles .word { display: flex; gap: 2px; }
@@ -239,7 +255,7 @@
     }
     .slot:focus { border-style: solid; background: #2d3348; }
     .slot::placeholder { color: #8a7a2e; }
-    select.slot { cursor: pointer; }
+    select.slot { cursor: pointer; max-width: calc(100% - 4em); }   /* on a narrow screen a long one is cut short, and "if" and the colon stay on its line */
     input.slot.num { text-align: center; }
     .mv { display: flex; gap: 4px; }
     .mv button { width: 32px; height: 30px; font: 12px monospace; color: #d6deeb; background: #262c3d; border: 1px solid #3a4258; border-radius: 3px; cursor: pointer; }
@@ -303,7 +319,10 @@
     .overlay .keycard { font-size: 9px; }
 
     .jar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; width: 100%; padding: 4px; }
-    #jar-main { grid-template-columns: repeat(3, 1fr); }   /* six bugs: two full rows */
+    /* seven bugs: a row of four and a row of three, which sits in the middle */
+    #jar-main { grid-template-columns: repeat(8, 1fr); }
+    #jar-main .tile { grid-column: span 2; }
+    #jar-main .tile:nth-child(5) { grid-column: 2 / span 2; }
     .tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; background: #26324a; color: #f1f5f9; font-size: 1rem; cursor: pointer; }
     .tile img { width: 60px; margin-bottom: 4px; }
     .tile i { font-style: normal; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; font-size: .9rem; }
@@ -376,6 +395,10 @@
       .app-body { min-height: 340px; padding: 18px 16px; }
       .app-body.chase { padding-bottom: 70px; }
       .code-pane { font-size: 13px; }
+      /* the jar: rows of three, and the seventh bug in the middle */
+      #jar-main { grid-template-columns: repeat(6, 1fr); }
+      #jar-main .tile:nth-child(5) { grid-column: span 2; }
+      #jar-main .tile:nth-child(7) { grid-column: 3 / span 2; }
       .lic-head img { width: 70px; }
     }
   </style>
@@ -521,7 +544,7 @@
 // THE BUGS
 // ══════════════════════════════════════════════
 
-// The six bugs of the quiz, in the order the player meets them. What each one is called, and
+// The seven bugs of the quiz, in the order the player meets them. What each one is called, and
 // the card that explains it, is in text.js under the same id.
 const BUGS = [
   { id: 'runaway',   color: '#ef4444' },
@@ -529,6 +552,7 @@ const BUGS = [
   { id: 'scrambler', color: '#f97316' },
   { id: 'yesbug',    color: '#22c55e' },
   { id: 'clicker',   color: '#06b6d4' },
+  { id: 'roadblock', color: '#b45309' },
   { id: 'cipher',    color: '#ec4899' },
 ];
 
@@ -958,7 +982,7 @@ $('#run').onclick = () => Code.run && Code.run();
 // ══════════════════════════════════════════════
 
 const STAGES = {};
-const ORDER = ['start', 'runaway', 'undefined', 'scrambler', 'yesbug', 'clicker', 'cipher', 'end'];
+const ORDER = ['start', 'runaway', 'undefined', 'scrambler', 'yesbug', 'clicker', 'roadblock', 'cipher', 'end'];
 
 function go(id) {
   S.stage = id; save(); live++;
@@ -967,6 +991,7 @@ function go(id) {
   document.body.classList.toggle('end', id === 'end');
   $('#app-body').className = 'app-body';
   $('#app-body').onpointermove = null;
+  document.onkeydown = null;
   Code.change = Code.move = null;
   Code.set('', []);
   setHints([]);
@@ -1398,7 +1423,199 @@ STAGES.clicker = {
   },
 };
 
-// ── BUG 6: THE GIBBERISH ── the last question is scrambled. Idea: algorithms.
+// ── BUG 6: THE ROADBLOCK ── question 4 only loads once a duck has run past the bugs in its
+// way. Idea: a bot. Steered by hand first, with one button and no way to duck; then the
+// player changes what the duck's rules wait for, so that it looks out for itself.
+STAGES.roadblock = {
+  enter() {
+    const T = L.roadblock, C = T.code, mine = live;
+    setApp(T.label, `
+      <div class="q-text">${T.title} <span id="rb-n"></span> %</div>
+      <div class="meter"><i id="rb-bar"></i></div>
+      <p class="q-sub" style="margin-top:12px">${T.sub}</p>
+      <div class="track" id="rb-track"><div class="runner"><img src="${Card.DUCK}" alt=""></div></div>
+      <div class="clicker loading">
+        <button class="app-btn big" id="rb-jump">${T.button}</button>
+        <p class="q-sub" id="rb-msg"></p>
+      </div>`);
+    const track = $('#rb-track'), runner = $('.runner', track), btn = $('#rb-jump');
+    perch($('#app-body .meter'), 'roadblock');
+
+    // The course: which bugs come along, on the ground or in the air, and after how many
+    // seconds each one reaches the duck. They come closer together as the run goes on.
+    let at = .6;
+    const course = [...'gggggaggagaagaga'].map((k, i) => ({ kind: k === 'g' ? 'ground' : 'air', at: at += 1 - .025 * i }));
+    const END = at + .6;
+    const HOLD = .5, HIGH = 54;   // a jump and a duck both last this long, in seconds; how high a jump goes
+    const AHEAD = HOLD / 2;       // a bug "is coming" when it is this far off: the duck is then at its highest, or lowest, as they meet
+    const DUCK = 54, REACH = 18, CLEAR = 20;   // where on the track the duck is, how near a bug has to be to touch it, how high gets the duck over one
+    let wide = 400;               // the track, in pixels: on a wide one the bugs have further to go, so they go faster
+    const far = t => wide * (.5 * t + .0375 * t * t);   // how far the duck has run after t seconds. It keeps getting faster.
+
+    const rules = [{ when: 'press', do: 'jump' }, { when: 'air', do: 'run' }];   // lines 3 and 4, and lines 5 and 6
+    let open = false, two = false;   // whether the first rule can be changed yet, and whether the second one is there
+    const inForce = () => two ? rules : rules.slice(0, 1);
+    let running = false, done = false, t = 0, last = 0, pct = 0;
+    let pose = 'run', since = 0;     // what the duck is doing ('run', 'jump' or 'duck'), and since when
+    let starts = 0, tries = 0, began = 0, pressed = 0, heard = 0;   // runs; runs by hand that failed; when the first run began; presses in this run; when the last press was
+
+    function draw() {
+      const rule = n => [
+        ['if' + n, 1, fmt(C.if, { when: pick('when' + n, Object.entries(C.whens)) })],
+        ['do' + n, 2, fmt(C.act, { do: pick('do' + n, Object.entries(C.acts)) })],
+      ];
+      Code.set(T.file, [
+        ['loop', 0, fmt(C.loop)],
+        ['step', 1, fmt(C.step)],
+        ...(open ? rule(1) : [['if1', 1, fmt(C.pressed)], ['do1', 2, fmt(C.act, { do: C.acts.jump })]]),
+        ...(two ? rule(2) : []),
+        ['goto', 0, L.goto],
+      ], open ? start : null);
+      $$('#code [data-slot]').forEach(box => box.value = rules[box.dataset.slot.slice(-1) - 1][box.dataset.slot.slice(0, -1)]);
+    }
+    Code.change = (id, value) => { rules[id.slice(-1) - 1][id.slice(0, -1)] = value; };
+
+    const meter = () => {
+      $('#rb-n').textContent = pct;
+      $('#rb-bar').style.width = pct + '%';
+    };
+
+    // A rule has its say: its two lines light up, and the duck does what they tell it, if it is
+    // not busy. Says whether the rule got its way.
+    function obey(n) {
+      const what = rules[n].do;
+      Code.flash('if' + (n + 1)); Code.flash('do' + (n + 1));
+      if (what === 'run') return true;
+      if (pose !== 'run') return false;
+      pose = what; since = t;
+      what === 'jump' ? SFX.dodge() : SFX.tick();
+      return true;
+    }
+
+    // The Jump button, or the space bar. What that does is up to the code: when no rule is
+    // waiting for it, nothing at all.
+    function press() {
+      const now = performance.now(), n = inForce().findIndex(r => r.when === 'press');
+      if (done || now - heard < 200) return;
+      heard = now;
+      if (n < 0) { if (!running) quack(T.deaf); return; }
+      if (!running) start();
+      pressed++; obey(n);
+    }
+    btn.onpointerdown = press;
+    btn.onclick = e => { if (e.detail) btn.blur(); else press(); };   // a pointer was already heard on its way down; this is a key on the button
+    document.onkeydown = e => {
+      if (e.key !== ' ' && e.key !== 'ArrowUp' || e.target.closest('button, select, input') || $('.overlay.open')) return;
+      e.preventDefault();   // the space bar would scroll the page
+      if (!e.repeat) press();
+    };
+
+    function start() {
+      if (running || done) return;
+      running = true; starts++; t = 0; pressed = 0; pose = 'run'; last = performance.now();
+      began = began || last;
+      wide = Math.max(track.clientWidth, 400);
+      $$('.block', track).forEach(el => el.remove());
+      course.forEach(o => {
+        track.insertAdjacentHTML('beforeend', `<img class="block ${o.kind}" src="${sprite('roadblock')}" alt="">`);
+        Object.assign(o, { el: track.lastChild, where: far(o.at), x: Infinity, seen: false, by: -1, did: false });
+      });
+      track.className = 'track on';
+      $('#rb-msg').textContent = '';
+      if (open) { Code.lock(true); $('#run').blur(); }
+      $$('#code li').slice(0, 2).forEach(li => li.classList.add('hot'));   // the loop itself runs too fast to follow
+      frame(last);
+    }
+
+    function frame(now) {
+      if (!running || mine !== live) return;
+      if ($('.overlay.open')) { last = now; return requestAnimationFrame(frame); }   // the game waits while something is in front of it
+      t += Math.min((now - last) / 1000, .05); last = now;
+
+      let high = 0;   // how far the duck is off the ground
+      if (pose !== 'run' && t - since >= HOLD) pose = 'run';
+      if (pose === 'jump') { const u = (t - since) / HOLD; high = 4 * HIGH * u * (1 - u); }
+      runner.style.transform = pose === 'duck' ? 'scaleY(.5)' : `translateY(${-high}px)`;
+
+      const run = far(t);
+      track.style.setProperty('--at', -(run % 24) + 'px');
+      for (const o of course) {
+        const was = o.x;
+        o.x = DUCK + o.where - run;
+        o.el.style.left = o.x + 'px';
+        // A bug that is coming is put to the rules, from the top down: the first one about its kind decides.
+        if (!o.seen && o.at - t <= AHEAD) {
+          o.seen = true;
+          o.by = inForce().findIndex(r => r.when === o.kind);
+          if (o.by >= 0) o.did = obey(o.by);
+        }
+        const touching = o.x < DUCK + REACH && was > DUCK - REACH;
+        if (touching && (o.kind === 'ground' ? high < CLEAR : pose !== 'duck')) return crash(o);
+      }
+
+      pct = Math.min(99, Math.floor(100 * run / far(END)));
+      meter();
+      if (t >= END) return finish();
+      requestAnimationFrame(frame);
+    }
+
+    // The duck ran into a bug: loading has failed, and the duck says why.
+    function crash(o) {
+      const rule = rules[o.by], byHand = inForce().some(r => r.when === 'press');
+      running = false;
+      track.className = 'track hit';
+      $$('#code li').forEach(li => li.classList.remove('hot'));
+      Code.lock(false);
+      $('#rb-msg').textContent = T.failed(pct);
+      SFX.bad();
+      // a kind of bug that nothing in the code is about yet: the duck adds the lines for it
+      if (o.kind === 'air' && !two) return offer(open ? T.second : T.both, true);
+      if (!open) {
+        if (++tries >= 2 || performance.now() - began > 20000) return offer(T.offer);
+        standby();
+        return quack(T.ouch);
+      }
+      if (rule && o.did) quack(T.obeyed(o.by * 2 + 4, C.acts[rule.do], T.kinds[o.kind]));
+      else if (!rule && !byHand) quack(T.norule(T.kinds[o.kind]));
+      else quack(T.ouch);
+    }
+
+    // The duck turns lines 3 and 4 into yellow boxes, and with `more` adds two lines for a second rule.
+    function offer(text, more = false) {
+      const fresh = [...(open ? [] : [2, 3]), ...(more ? [4, 5] : [])];
+      open = true; two = two || more;
+      draw();
+      fresh.forEach(i => $$('#code li')[i].classList.add('fresh'));
+      setHints(two ? L.hints.flyer : L.hints.roadblock);
+      quack(text);
+    }
+
+    // Those who never start, or give up after one go, get the yellow boxes as well.
+    function standby() {
+      const n = starts;
+      after(15000, () => { if (starts === n && !open) offer(T.offer); });
+    }
+
+    function finish() {
+      running = false; done = true; btn.disabled = true;
+      track.className = 'track';
+      pct = 100; meter();
+      $$('#code li').forEach(li => li.classList.remove('hot'));
+      Code.lock(true); Code.flash('goto');
+      $('#rb-msg').textContent = T.done;
+      quack(pressed ? T.wonHand : T.won(course.length));
+      SFX.good();
+      after(2200, () => fixed('roadblock'));
+    }
+
+    draw();
+    meter();
+    quack(T.intro);
+    standby();
+  },
+};
+
+// ── BUG 7: THE GIBBERISH ── the last question is scrambled. Idea: algorithms.
 // The key and the decoder strip are on the player's keycard. First one word is decoded by
 // hand, to find out what the steps are; then those steps become a program.
 STAGES.cipher = {

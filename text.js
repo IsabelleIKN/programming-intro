@@ -82,6 +82,8 @@ const TEXT = {
         text: '“Als dit zo is, doe dan dat. Anders doe je iets anders.” Zo neemt een programma een beslissing. Elke keer dat je “verkeerd wachtwoord” te zien kreeg, kwam dat door zo’n regel.' },
       clicker: { name: 'De Vingerbreker', idea: 'een loop', word: 'loop',
         text: 'Zeg tegen een computer dat hij iets moet herhalen en hij doet het: honderd keer of een miljard keer, zonder zich te vervelen, zonder moe te worden. Wordt een klus saai, dan gaat een developer op zoek naar de loop.' },
+      roadblock: { name: 'De Dwarsligger', idea: 'een bot', word: 'bot',
+        text: 'Je hield op met sturen en schreef op wat er moet gebeuren: komt er dit aan, doe dan dat. Een programma dat zelf oplet en zelf beslist heet een bot. Zo denkt elke tegenstander in elke game. En wat jij vergeet op te schrijven, doet hij niet.' },
       cipher: { name: 'De Wartaal', idea: 'een algoritme', word: 'algoritme',
         text: 'Je nam iets wat je met de hand kon doen en schreef het op als stappen die een computer kan volgen. Dat recept ontcijfert nu elk bericht, met elke sleutel, in een oogwenk. Dat is de hele truc.' },
 
@@ -129,6 +131,16 @@ const TEXT = {
         'Regel 7 en 8 kunnen voor jou op de knop drukken. Hoe vaak, dat bepaalt het gele vakje.',
         'Typ 100 in het gele vakje op regel 7 en druk op Uitvoeren.',
       ],
+      roadblock: [
+        'Jij moet elke bug zien aankomen en op tijd drukken. Maar het programma ziet ze ook aankomen.',
+        'Regel 3 zegt waar ik op wacht: nu op jouw vinger. Het gele vakje op die regel kan me ook op iets anders laten wachten.',
+        'Zet het gele vakje op regel 3 op “er een bug op de grond aankomt”, laat regel 4 op “springen” staan en druk op Uitvoeren.',
+      ],
+      flyer: [
+        'Wat doe jij als er iets laag over komt vliegen? Springen is het niet.',
+        'Elke soort bug heeft eigen regels nodig: twee voor op de grond, twee voor in de lucht.',
+        'Regel 3 en 4: “er een bug op de grond aankomt” en “springen”. Regel 5 en 6: “er een bug in de lucht aankomt” en “bukken”. Druk dan op Uitvoeren.',
+      ],
       byhand: [
         'Op je kaart staan twee soorten rijen: donkere met de versleutelde letters, lichte met de echte letters.',
         'Zoek de eerste versleutelde letter op in een donkere rij op je kaart. De letter er recht onder is de echte. Typ die.',
@@ -145,7 +157,7 @@ const TEXT = {
     start: {
       sub: '4 makkelijke vragen. Er kan echt helemaal niets misgaan.',
       go: 'Start de quiz',
-      small: 'Ongeveer 10 minuten · Geen ervaring nodig · Houd je kaart bij de hand',
+      small: 'Ongeveer 12 minuten · Geen ervaring nodig · Houd je kaart bij de hand',
     },
 
     // ── bug 1: the button that runs away ──
@@ -258,7 +270,40 @@ const TEXT = {
       },
     },
 
-    // ── bug 6: the scrambled question ── its first word is the one decoded by hand
+    // ── bug 6: question 4 will not load ── until a duck has run past the bugs in its way.
+    // The duck is the one talking, so it says "ik" about the duck on the screen.
+    roadblock: {
+      label: 'Laden',
+      title: 'Vraag 4 wordt geladen…',
+      sub: 'Wachten is saai. Help de eend zolang over de bugs: klik op Spring of druk op de spatiebalk.',
+      button: 'Spring',
+      failed: pct => `✖ Laden mislukt bij ${pct} %.`,
+      done: '✔ Vraag 4 is geladen.',
+      intro: 'Hé, dat ben ik! De developer heeft een spelletje gemaakt voor tijdens het laden. Alleen komt vraag 4 pas als ik de overkant haal. Klik op Spring als er een bug aankomt.',
+      ouch: 'Au. Te vroeg of te laat, en het gaat ook nog steeds sneller. Nog een keer?',
+      offer: 'Het gaat steeds sneller: dat houdt geen mens bij. En jij bent geen robot, dat heb je net bewezen. Maak er dan maar een van mij: op regel 3 en 4 staan nu gele vakjes.',
+      both: 'Een bug in de lucht! Daar spring ik niet overheen, en een knop om te bukken is er niet. Code kan het wel: regel 3 tot en met 6 hebben nu gele vakjes. Laat mij zelf opletten.',
+      second: 'Een bug in de lucht! Daar stond niets over in de code, dus deed ik niets. Een programma kent alleen de gevallen die iemand heeft opgeschreven. Ik heb er twee regels bij gezet.',
+      deaf: 'Die knop doet niets meer: geen enkele regel luistert er nog naar. Druk op Uitvoeren.',
+      norule: kind => `Er kwam ${kind} aan, en daar zegt geen enkele regel iets over. Dus liep ik gewoon door.`,
+      obeyed: (line, act, kind) => `Regel ${line} zei: ${act}. Dat deed ik dan ook, recht tegen ${kind} aan.`,
+      won: n => `${n} bugs, steeds sneller, en jij raakte geen knop aan. Je stuurt me niet meer: je hebt me geprogrammeerd.`,
+      wonHand: 'Gehaald, jij en de code samen. Ook goed.',
+      kinds: { ground: 'een bug op de grond', air: 'een bug in de lucht' },
+      file: 'laden.code',
+      code: {
+        loop: '**herhaal** tot vraag 4 geladen is:',
+        step: 'de eend zet een stap',
+        pressed: '**als** er op [Spring] wordt gedrukt:',
+        if: '**als** {when}:',
+        act: 'de eend moet {do}',
+        // what a rule can wait for, and what the duck can do then
+        whens: { press: 'er op Spring wordt gedrukt', ground: 'er een bug op de grond aankomt', air: 'er een bug in de lucht aankomt' },
+        acts: { jump: 'springen', duck: 'bukken', run: 'doorlopen' },
+      },
+    },
+
+    // ── bug 7: the scrambled question ── its first word is the one decoded by hand
     cipher: {
       question: 'VRAAG VIER: WIE HEEFT DEZE QUIZ GEREPAREERD?',
       answers: ['DE DEVELOPER', 'DE EEND'],   // the third answer is the player's own name…
@@ -323,7 +368,7 @@ const TEXT = {
       rumor: 'Gerucht: ', number: 'Nr. ',
       license: 'Bugjagersdiploma', issuer: 'uitgereikt door een badeend', name: 'Naam',
       bug: 'Mijn bug. Speel het spel uit en je ziet welke vakjes je moet inkleuren.',
-      ask: 'Vraag me wat dit zijn:', ideas: 'event · variabele · sequentie<br>voorwaarde · loop · algoritme',
+      ask: 'Vraag me wat dit zijn:', ideas: 'event · variabele · sequentie<br>voorwaarde · loop · bot · algoritme',
       rumors: [
         'de eend kan niet tegen kietelen.',
         'niemand controleert ooit de score.',
@@ -406,6 +451,8 @@ const TEXT = {
         text: '“If this, do that. Otherwise, do something else.” That is how a program makes a decision. Every “wrong password” you have ever seen came from a line like this one.' },
       clicker: { name: 'The Finger-Breaker', idea: 'a loop', word: 'loop',
         text: 'Tell a computer to repeat something and it will: a hundred times or a billion, never bored, never tired. When a job gets boring, a programmer starts looking for the loop.' },
+      roadblock: { name: 'The Roadblock', idea: 'a bot', word: 'bot',
+        text: 'You stopped steering and wrote down what should happen: when this comes along, do that. A program that watches and decides for itself is called a bot. Every computer opponent in every game thinks this way. And whatever you forget to write down, it will not do.' },
       cipher: { name: 'The Gibberish', idea: 'an algorithm', word: 'algorithm',
         text: 'You took something you could do by hand and wrote it down as steps a computer can follow. That recipe now unscrambles any message, with any key, in a blink. That is the whole trick.' },
 
@@ -452,6 +499,16 @@ const TEXT = {
         'Lines 7 and 8 can press the button for you. How many times is up to the yellow box.',
         'Type 100 in the yellow box on line 7 and press Run.',
       ],
+      roadblock: [
+        'You have to see every bug coming and press in time. But the program can see them coming too.',
+        'Line 3 says what I wait for: right now, your finger. The yellow box on that line can make me wait for something else.',
+        'Set the yellow box on line 3 to “a bug on the ground is coming”, leave line 4 on “jump”, and press Run.',
+      ],
+      flyer: [
+        'What do you do when something flies at your head? Not jump.',
+        'Each kind of bug needs lines of its own: two for the ground, two for the air.',
+        'Lines 3 and 4: “a bug on the ground is coming” and “jump”. Lines 5 and 6: “a bug in the air is coming” and “duck”. Then press Run.',
+      ],
       byhand: [
         'Your card has two kinds of rows: dark ones with the scrambled letters, light ones with the real letters.',
         'Find the first scrambled letter in a dark row on your card. The letter right below it is the real one. Type that.',
@@ -468,7 +525,7 @@ const TEXT = {
     start: {
       sub: '4 easy questions. Absolutely nothing can go wrong.',
       go: 'Start the quiz',
-      small: 'About 10 minutes · No experience needed · Keep your card handy',
+      small: 'About 12 minutes · No experience needed · Keep your card handy',
     },
 
     // ── bug 1: the button that runs away ──
@@ -579,7 +636,38 @@ const TEXT = {
       },
     },
 
-    // ── bug 6: the scrambled question ── its first word is the one decoded by hand
+    // ── bug 6: question 4 will not load ──
+    roadblock: {
+      label: 'Loading',
+      title: 'Loading question 4…',
+      sub: 'Waiting is boring. Help the duck over the bugs in the meantime: click Jump or press the space bar.',
+      button: 'Jump',
+      failed: pct => `✖ Loading failed at ${pct} %.`,
+      done: '✔ Question 4 has loaded.',
+      intro: 'Hey, that is me! The developer made a little game for the loading screen. Only, question 4 will not arrive until I reach the other side. Click Jump when a bug comes along.',
+      ouch: 'Ouch. Too early or too late, and it keeps getting faster as well. Again?',
+      offer: 'It keeps getting faster: no human can keep that up. And you are not a robot, you just proved that. So make me one: lines 3 and 4 have yellow boxes now.',
+      both: 'A bug in the air! I cannot jump over that, and there is no button for ducking. Code can do it, though: lines 3 to 6 have yellow boxes now. Make me watch out for myself.',
+      second: 'A bug in the air! The code said nothing about those, so I did nothing. A program only knows the cases somebody wrote down. I added two lines.',
+      deaf: 'That button does nothing now: no line is listening to it any more. Press Run.',
+      norule: kind => `Along came ${kind}, and no line says anything about that. So I just kept running.`,
+      obeyed: (line, act, kind) => `Line ${line} said: ${act}. So I did, straight into ${kind}.`,
+      won: n => `${n} bugs, faster and faster, and you never touched a button. You are not steering me any more: you programmed me.`,
+      wonHand: 'Made it, between you and the code. That works too.',
+      kinds: { ground: 'a bug on the ground', air: 'a bug in the air' },
+      file: 'loading.code',
+      code: {
+        loop: '**repeat** until question 4 has loaded:',
+        step: 'the duck takes a step',
+        pressed: '**if** [Jump] is pressed:',
+        if: '**if** {when}:',
+        act: 'the duck should {do}',
+        whens: { press: 'Jump is pressed', ground: 'a bug on the ground is coming', air: 'a bug in the air is coming' },
+        acts: { jump: 'jump', duck: 'duck', run: 'keep running' },
+      },
+    },
+
+    // ── bug 7: the scrambled question ── its first word is the one decoded by hand
     cipher: {
       question: 'LAST QUESTION: WHO FIXED THIS QUIZ?',
       answers: ['THE DEVELOPER', 'THE DUCK'],
@@ -642,7 +730,7 @@ const TEXT = {
       rumor: 'Rumor has it… ', number: 'No. ',
       license: 'Bug hunter license', issuer: 'issued by a rubber duck', name: 'Name',
       bug: 'My bug. Finish the game and it tells you which squares to fill in.',
-      ask: 'Ask me what these are:', ideas: 'event · variable · sequence<br>condition · loop · algorithm',
+      ask: 'Ask me what these are:', ideas: 'event · variable · sequence<br>condition · loop · bot · algorithm',
       rumors: [
         'the duck is ticklish.',
         'nobody ever checks the score.',

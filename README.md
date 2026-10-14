@@ -1,8 +1,8 @@
 # The Totally Normal Quiz
 
-A 10-minute introduction to programming for people who have never written code, made for open days, PR events and school visits.
+A 12-minute introduction to programming for people who have never written code, made for open days, PR events and school visits.
 
-It looks like a dull quiz. One question in, the Next button starts running away, and the developer's rubber duck explains that the quiz is full of bugs and the developer has gone to lunch. The player types the code from a paper **keycard**, which unlocks "developer mode": the code behind the screen appears under the quiz. From there they fix six bugs by reading that code and changing it. Nobody types real syntax; the code is plain sentences with yellow boxes that can be changed.
+It looks like a dull quiz. One question in, the Next button starts running away, and the developer's rubber duck explains that the quiz is full of bugs and the developer has gone to lunch. The player types the code from a paper **keycard**, which unlocks "developer mode": the code behind the screen appears under the quiz. From there they fix seven bugs by reading that code and changing it. Nobody types real syntax; the code is plain sentences with yellow boxes that can be changed.
 
 ## Running it
 
@@ -49,9 +49,10 @@ A player without a card can pick "I have no card" and borrow one on screen, so t
 | The Scrambler | The quiz says "Correct!" before asking, then waits forever | Put four lines in the right order | sequence |
 | The Yes-Bug | Every answer is correct | Fix the `if` | condition |
 | The Finger-Breaker | "Click 100 times to prove you are not a robot" | Let a `repeat` do the clicking | loop |
+| The Roadblock | Question 4 only loads once a running duck gets past the bugs in its way, and it keeps getting faster | Steer the duck with the Jump button, then change what its `if` waits for, so that it jumps and ducks by itself | bot |
 | The Gibberish | The last question is scrambled | Decode one word by hand with the card, then turn those steps into a program | algorithm |
 
-The last screen names the six ideas, shows the decoder again as real Python, and hands out the bug to draw.
+The last screen names the seven ideas, shows the decoder again as real Python, and hands out the bug to draw.
 
 ## Secret bugs (spoilers)
 
