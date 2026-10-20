@@ -141,7 +141,7 @@
     .warn { margin-top: 10px; font-size: 13px; color: #a15c00; }
     .wait, .idle { margin-top: 14px; color: #8a6d1a; font-style: italic; }
     .idle { color: #9a968c; }
-    .banner { margin-top: 16px; padding: 12px; text-align: center; border-radius: 3px; font: bold 22px 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive; }
+    .banner { margin-top: 16px; padding: 12px; text-align: center; border-radius: 3px; font-size: 22px; font-weight: bold; }
     .banner.good { background: #dff3d8; color: #1f6b1f; border: 1px solid #9fcf93; }
     .banner.bad { background: #f9dcdc; color: #9b1c1c; border: 1px solid #e0a0a0; }
 
@@ -280,19 +280,31 @@
     body.dev #duckbar { display: grid; }
     #duck { grid-area: duck; justify-self: center; background: none; border: 0; padding: 0; cursor: pointer; }
     #duck img { display: block; width: 56px; }
+    #duck.talking { animation: talk .3s steps(2) infinite; }   /* while its words appear; a squeeze squashes the picture inside */
+    @keyframes talk { 50% { transform: translateY(-4px) rotate(-8deg); } }
     #duck.squeak img { animation: squeak .25s steps(3); }
     @keyframes squeak { 50% { transform: scale(1.2, .7) translateY(14px); } }
-    #bubble { grid-area: bubble; min-height: 62px; margin: 4px 4px 4px 0; padding: 11px 16px; background: #fffbe6; color: var(--ink); font-size: 1rem; line-height: 1.12; }
+    #bubble { grid-area: bubble; position: relative; min-height: 62px; margin: 4px 4px 4px 0; padding: 11px 16px; background: #fffbe6; color: var(--ink); font-size: 1rem; line-height: 1.12; }
     #bubble.pop { animation: pop .25s steps(4); }
     @keyframes pop { 0% { transform: translateY(6px) scale(.97); } }
-    #hint { grid-area: hint; margin: 0 0 4px 4px; padding: 6px 8px; font-size: .85rem; white-space: nowrap; }
+    #bubble .rest { visibility: hidden; }   /* the words still to come already take their place, so the bubble does not grow as it fills */
+    /* the tail that points at the duck: its outline, and inside that the color of the bubble */
+    #bubble::before, #bubble::after { content: ''; position: absolute; left: -16px; top: 14px; width: 16px; height: 28px; background: var(--ink); }
+    #bubble::before { clip-path: polygon(16px 0, 12px 0, 12px 4px, 8px 4px, 8px 8px, 4px 8px, 4px 12px, 0 12px, 0 16px, 4px 16px, 4px 20px, 8px 20px, 8px 24px, 12px 24px, 12px 28px, 16px 28px); }
+    #bubble::after { background: #fffbe6; clip-path: polygon(16px 4px, 12px 4px, 12px 8px, 8px 8px, 8px 12px, 4px 12px, 4px 16px, 8px 16px, 8px 20px, 12px 20px, 12px 24px, 16px 24px); }
+    /* the hint button stands out from the dark strip in the gold of the duck */
+    #hint { grid-area: hint; margin: 0 0 4px 4px; padding: 7px 10px; font-size: 1rem; white-space: nowrap; background: var(--gold); color: var(--ink); text-shadow: none; }
     #hint.nudge { animation: nudge 1s steps(4) infinite; }
-    @keyframes nudge { 50% { transform: translateY(-5px); filter: brightness(1.5); } }
+    @keyframes nudge { 50% { transform: translateY(-5px); filter: brightness(1.2); } }
     /* with room to spare the hint button sits at the end of the bubble, and the strip is one row high */
     @media (min-width: 900px) {
       #duckbar { grid-template: "duck bubble hint" auto / auto 1fr auto; align-items: center; }
-      #bubble { min-height: 70px; }   /* two lines */
-      #hint { margin: 0 4px 0 0; }
+      #duck img { width: 64px; }
+      /* Two lines, and the letters as large as the width allows with everything the duck says
+         still fitting in those two: so the strip never grows, and nothing under it shifts. */
+      #bubble { min-height: 70px; padding: 7px 16px; font-size: clamp(1rem, (100vw - 282px) * .029, 1.25rem); line-height: 1.05; }
+      #bubble::before, #bubble::after { top: calc(50% - 14px); }
+      #hint { margin: 0 4px 0 0; padding: 10px 16px; font-size: 1.15rem; }
     }
 
     /* ── OVERLAYS ── */
@@ -446,7 +458,7 @@
 <div id="duckbar">
   <button id="duck" data-tip="duck.tip"><img alt=""></button>
   <div id="bubble"></div>
-  <button class="btn ghost" id="hint"></button>
+  <button class="btn" id="hint"></button>
 </div>
 
 <section id="end"></section>
@@ -580,18 +592,25 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const LS_KEY = 'bughunt_v1';
+// Where the player is, kept in this tab only and picked up again only after a reload (or a step
+// back and forward), so that a slip of the finger does not cost them their bugs. Opening the
+// game, in a new tab or in the same one, always starts at the first screen.
+const SAVE_KEY = 'bughunt_v1';
 let saved = {};
-try { saved = JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { /* a private window: play without saving */ }
+try {
+  const how = performance.getEntriesByType('navigation')[0]?.type;
+  if (how === 'reload' || how === 'back_forward') saved = JSON.parse(sessionStorage.getItem(SAVE_KEY)) || {};
+  localStorage.removeItem(SAVE_KEY);   // where an earlier version kept it, so that it outlived the tab
+} catch (e) { /* a private window: play without saving */ }
 const S = Object.assign({
   stage: 'start', card: null, borrowed: false,   // card: its number (see card.js); borrowed: the player has no paper one
   name: '', score: 0, caught: [], secrets: [],
   began: 0, ended: 0, sawEnd: false, sound: SETTINGS.sound,
   lang: '',   // the language this player switched to, if any
 }, saved);
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function startOver() {
-  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  try { sessionStorage.removeItem(SAVE_KEY); } catch (e) {}
   location.reload();
 }
 
@@ -727,10 +746,25 @@ function showBrand(pixels) {
 }
 
 // ── the duck ──
-// What the duck says in its speech bubble above the quiz. It never blocks the game.
+// What the duck says in its speech bubble above the quiz. It never blocks the game. The words
+// appear a few letters at a time, as they do in a game, and the duck moves while they do: with
+// so much else on the screen, that is what draws the eye to it.
+let typing;
 function quack(text) {
-  const b = $('#bubble');
-  b.textContent = text;
+  const b = $('#bubble'), d = $('#duck'), letters = [...text];
+  let at = 0;
+  b.innerHTML = '<span></span><span class="rest"></span>';
+  const [said, rest] = b.children;
+  const type = () => {
+    said.textContent = letters.slice(0, at).join('');
+    rest.textContent = letters.slice(at).join('');
+    if (at >= letters.length) { clearInterval(typing); d.classList.remove('talking'); }
+    at += 2;
+  };
+  clearInterval(typing);
+  d.classList.add('talking');
+  typing = setInterval(type, 20);
+  type();
   b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
   SFX.talk();
 }

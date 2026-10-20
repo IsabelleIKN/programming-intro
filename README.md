@@ -36,6 +36,7 @@ A player without a card can pick "I have no card" and borrow one on screen, so t
 
 - **Next player:** the button on the last screen, or "Start over" in the bug jar.
 - **Walked away:** after three minutes without a touch the game asks "Still there?" and then starts over by itself. Change or switch off the time in `settings.js`.
+- **Reloaded:** a reload keeps the player where they were, so one by accident costs them nothing. Opening the game, in a new tab or by following the link again, always starts at the first screen.
 - **Stuck:** the Hint button gives three hints per bug, the last one literal. It starts bouncing when a player has had the hints available for half a minute without asking for one.
 - **Demonstrating:** open `index.html?staff` for a small bar that steps through the stages.
 - **Sound:** the Sound button in the game, or `sound` in `settings.js`.
